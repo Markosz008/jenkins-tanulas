@@ -29,17 +29,29 @@ pipeline {
         stage('Ansible Provisioning') {
             steps {
                 script {
-                    def serverIp = sh(script: "terraform output -raw public_ip", returnStdout: true).trim()
-                    echo "Target Server IP: ${serverIp}"
+                    // Lekérjük mindkét IP címet a Terraform outputból
+                    def bastionIp = sh(script: "terraform output -raw bastion_ip", returnStdout: true).trim()
+                    def webPrivateIp = sh(script: "terraform output -raw web_private_ip", returnStdout: true).trim()
                     
-                    // Workaround for SSH key permissions
+                    echo "Bastion Host IP: ${bastionIp}"
+                    echo "Target Private Server IP: ${webPrivateIp}"
+                    
+                    // Kulcs elökészítése
                     sh "cp /var/jenkins_home/id_rsa ./deploy_key"
                     sh "chmod 400 ./deploy_key"
                     
-                    echo "Waiting for SSH to be ready..."
+                    echo "Waiting for infrastructure to be ready..."
                     sleep 30
 
-                    sh "ansible-playbook -i ${serverIp}, --private-key ./deploy_key -u ec2-user --ssh-common-args='-o StrictHostKeyChecking=no' setup.yml"
+                    // Az Ansible "mágia": ProxyCommand használata az átugráshoz
+                    // Ez azt mondja: "Csatlakozz a privát IP-re, de a Bastionon keresztül ugrálva"
+                    sh """
+                        ansible-playbook -i ${webPrivateIp}, \
+                        --private-key ./deploy_key \
+                        -u ec2-user \
+                        --ssh-common-args="-o StrictHostKeyChecking=no -o ProxyCommand='ssh -W %h:%p -q ec2-user@${bastionIp} -i ./deploy_key -o StrictHostKeyChecking=no'" \
+                        setup.yml
+                    """
                     
                     sh "rm ./deploy_key"
                 }
@@ -50,13 +62,13 @@ pipeline {
     post {
         failure {
             echo 'Build Failed!'
-            discordSend description: "❌ Build #${BUILD_NUMBER} failed!", 
+            discordSend description: "❌ Bastion Architecture Build #${BUILD_NUMBER} failed!", 
                         title: "Project: ${JOB_NAME}", 
                         webhookURL: env.DISCORD_URL
         }
         success {
             echo 'Build Success!'
-            discordSend description: "✅ Build #${BUILD_NUMBER} successful!", 
+            discordSend description: "✅ Bastion Architecture Build #${BUILD_NUMBER} successful!\nWeb Server is now secured in a Private Subnet.", 
                         title: "Project: ${JOB_NAME}", 
                         webhookURL: env.DISCORD_URL
         }
