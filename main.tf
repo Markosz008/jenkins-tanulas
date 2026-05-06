@@ -19,6 +19,13 @@ provider "aws" {
   region = "eu-central-1"
 }
 
+# SSH kulcspár regisztrálása az AWS-ben
+resource "aws_key_pair" "jenkins_key" {
+  key_name   = "jenkins-key"
+  # IDE ILLESZD BE a /var/jenkins_home/id_rsa.pub tartalmát:
+  public_key = "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAACAQ..." 
+}
+
 # 1. A hálózat (VPC)
 resource "aws_vpc" "elso_halozatom" {
   cidr_block = "10.0.0.0/16"
@@ -27,23 +34,39 @@ resource "aws_vpc" "elso_halozatom" {
   }
 }
 
-# 2. Alhálózat (Subnet) az EC2-nek
+# 2. Alhálózat (Subnet)
 resource "aws_subnet" "elso_alhalozat" {
   vpc_id                  = aws_vpc.elso_halozatom.id
   cidr_block              = "10.0.1.0/24"
-  map_public_ip_on_launch = true # Hogy elérjük kívülről SSH-n
+  map_public_ip_on_launch = true
   tags = {
     Name = "Ansible-Subnet"
   }
 }
 
-# 3. Biztonsági csoport (Security Group / Tűzfal)
+# Internet Gateway a kommunikációhoz (fontos az SSH-hoz!)
+resource "aws_internet_gateway" "gw" {
+  vpc_id = aws_vpc.elso_halozatom.id
+}
+
+resource "aws_route_table" "main_rt" {
+  vpc_id = aws_vpc.elso_halozatom.id
+  route {
+    cidr_block = "0.0.0.0/0"
+    gateway_id = aws_internet_gateway.gw.id
+  }
+}
+
+resource "aws_route_table_association" "a" {
+  subnet_id      = aws_subnet.elso_alhalozat.id
+  route_table_id = aws_route_table.main_rt.id
+}
+
+# 3. Biztonsági csoport
 resource "aws_security_group" "jenkins_access" {
   name        = "jenkins_access"
-  description = "SSH eleres engedelyezese"
   vpc_id      = aws_vpc.elso_halozatom.id
 
-  # SSH bemenet
   ingress {
     from_port   = 22
     to_port     = 22
@@ -51,7 +74,6 @@ resource "aws_security_group" "jenkins_access" {
     cidr_blocks = ["0.0.0.0/0"]
   }
 
-  # Minden kimenő forgalom engedélyezése
   egress {
     from_port   = 0
     to_port     = 0
@@ -60,15 +82,20 @@ resource "aws_security_group" "jenkins_access" {
   }
 }
 
-# 4. Az EC2 Szerver (A celpont az Ansible-nek)
+# 4. Az EC2 Szerver
 resource "aws_instance" "web_szerver" {
-  # Ez az aktuális Amazon Linux 2023 AMI Frankfurtban (eu-central-1)
-  ami                    = "ami-0084a47cc718c111a" 
+  ami                    = "ami-08bdb1495db49a7f9" 
   instance_type          = "t3.micro"
   subnet_id              = aws_subnet.elso_alhalozat.id
   vpc_security_group_ids = [aws_security_group.jenkins_access.id]
+  key_name               = aws_key_pair.jenkins_key.key_name # Itt rendeljük hozzá a kulcsot!
 
   tags = {
     Name = "Ansible-Target-Server"
   }
+}
+
+# Ez a sor kell, hogy a Jenkins ki tudja olvasni az IP címet!
+output "public_ip" {
+  value = aws_instance.web_szerver.public_ip
 }
