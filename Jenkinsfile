@@ -10,7 +10,6 @@ pipeline {
     stages {
         stage('Terraform Init') {
             steps {
-                // A -force-copy automatikusan átviszi a régi állapotot az S3-ba
                 sh 'terraform init -input=false -force-copy'
             }
         }
@@ -27,32 +26,34 @@ pipeline {
             }
         }
 
-         stage('Ansible Provisioning') {
+        stage('Ansible Provisioning') {
             steps {
                 script {
-                    // Lekérjük a publikus IP-t a Terraformtól
+                    // Lekérjük a publikus IP-t a Terraform kimenetéből
                     def serverIp = sh(script: "terraform output -raw public_ip", returnStdout: true).trim()
                     echo "Szerver IP címe: ${serverIp}"
                     
-                    // Várakozunk kicsit, hogy az SSH szolgáltatás elinduljon a távoli gépen
-                    sleep 20 
+                    // Várakozunk 30 másodpercet, hogy az AWS szerveren elinduljon az SSH
+                    echo "Várakozás az SSH-ra (30 mp)..."
+                    sleep 30
 
-                    // Futtatjuk az Ansible-t a távoli gépre
+                    // Futtatjuk az Ansible-t a távoli gépen a generált kulccsal
                     sh "ansible-playbook -i ${serverIp}, --private-key /var/jenkins_home/id_rsa -u ec2-user --ssh-common-args='-o StrictHostKeyChecking=no' setup.yml"
                 }
             }
         }
+    }
 
     post {
         failure {
             echo 'Hiba történt!'
-            discordSend description: "❌ AWS Terraform Build #${BUILD_NUMBER} elbukott!", 
+            discordSend description: "❌ AWS Terraform + Ansible Build #${BUILD_NUMBER} elbukott!", 
                         title: "Hiba a projektben: ${JOB_NAME}", 
                         webhookURL: env.DISCORD_URL
         }
         success {
             echo 'Siker!'
-            discordSend description: "✅ AWS Terraform Build #${BUILD_NUMBER} sikeresen lefutott!", 
+            discordSend description: "✅ AWS Terraform + Ansible Build #${BUILD_NUMBER} sikeresen lefutott!", 
                         title: "Siker: ${JOB_NAME}", 
                         webhookURL: env.DISCORD_URL
         }
