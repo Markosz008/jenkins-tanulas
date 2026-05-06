@@ -1,52 +1,40 @@
 pipeline {
     agent any
-    
-    tools {
-        nodejs 'node18'
-    }
 
     environment {
-        SAJAT_TITKUNK = credentials('TESZT_API_KULCS')
-        // Bekérjük a Discord Webhook URL-t a titkok közül!
-        DISCORD_URL = credentials('DISCORD_WEBHOOK')
+        // Itt kötjük össze a Jenkins titkait a Terraform környezeti változóival
+        AWS_ACCESS_KEY_ID     = credentials('AWS_ACCESS_KEY_ID')
+        AWS_SECRET_ACCESS_KEY = credentials('AWS_SECRET_ACCESS_KEY')
     }
 
     stages {
-        stage('Tesztelés') {
+        stage('Terraform Init') {
             steps {
-                echo 'Tesztek futtatása...'
-                sh 'npm test'
+                sh 'terraform init'
             }
         }
-        stage('Csomagolás') {
+
+        stage('Terraform Plan') {
             steps {
-                echo 'Csomagolás indul...'
-                sh 'tar -czvf kesz-alkalmazas.tar.gz test.js package.json'
+                // A 'plan' megmutatja, mit fog csinálni, de nem épít semmit
+                sh 'terraform plan'
+            }
+        }
+
+        stage('Terraform Apply') {
+            steps {
+                // Az '--auto-approve' azért kell, mert a Jenkins nem tud "yes"-t gépelni
+                sh 'terraform apply --auto-approve'
             }
         }
     }
-    
-    // Ide jön az értesítés!
+
     post {
         always {
-            archiveArtifacts artifacts: 'kesz-alkalmazas.tar.gz', fingerprint: true
-        }
-        success {
-            echo 'Sikeres futás! Értesítés küldése Discordra...'
-            // A discordSend parancsot a plugin adta nekünk
-            discordSend description: "✅ HIBÁTLAN FUTÁS! Az új verzió sikeresen lefordítva és tesztelve. (Build #${BUILD_NUMBER})", 
-                        link: env.BUILD_URL, 
-                        result: currentBuild.currentResult, 
-                        title: "Jenkins Projekt: ${JOB_NAME}", 
-                        webhookURL: env.DISCORD_URL
-        }
-        failure {
-            echo 'Valami elromlott! Riasztás küldése Discordra...'
-            discordSend description: "❌ BAJ VAN! A Pipeline elbukott. Kérlek azonnal nézd meg a logokat! (Build #${BUILD_NUMBER})", 
-                        link: env.BUILD_URL, 
-                        result: currentBuild.currentResult, 
-                        title: "Jenkins Projekt: ${JOB_NAME}", 
-                        webhookURL: env.DISCORD_URL
+            // Discord értesítés (ha még megvan a titkod a Jenkinsben)
+            discordSend description: "AWS Infrastruktúra státusz: ${currentBuild.currentResult}", 
+                        title: "Terraform Projekt: ${JOB_NAME}", 
+                        webhookURL: credentials('DISCORD_WEBHOOK')
         }
     }
 }
