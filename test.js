@@ -1,12 +1,15 @@
 console.log("🚀 Node.js tesztek indítása...");
 
-const a = 5;
-const b = 10;
+// Olvassuk be a titkot a környezeti változóból!
+// A változó neve SAJAT_TITKUNK lesz, ezt a Jenkinsből fogjuk beküldeni.
+const apiKey = process.env.SAJAT_TITKUNK;
 
-if (a + b === 15) {
-    console.log("✅ SIKERES TESZT: A matematika még mindig működik! (5 + 10 = 15)");
-    process.exit(0); // A 0 kilépési kód jelenti a Jenkinsnek, hogy minden rendben
+if (apiKey === "SzuperTitkosKulcs123") {
+    console.log("✅ SIKERES TESZT: A Jenkins sikeresen és titkosítva átadta az API kulcsot!");
+    console.log("A kapott kulcs (amit a Jenkins el fog rejteni): " + apiKey);
+    process.exit(0);
 } else {
-    console.log("❌ HIBÁS TESZT: Valami nagyon elromlott!");
-    process.exit(1); // Az 1-es kilépési kód jelenti a hibát, ez megállítja a Pipeline-t
+    console.log("❌ HIBÁS TESZT: Nem kaptam meg a titkos kulcsot, vagy hibás az értéke!");
+    console.log("Ezt kaptam helyette: " + apiKey);
+    process.exit(1);
 }
