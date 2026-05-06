@@ -1,39 +1,41 @@
 # AWS Infrastructure Automation with Jenkins, Terraform & Ansible
 
-This repository demonstrates a complete **GitOps and CI/CD pipeline** that automates the provisioning and configuration of cloud infrastructure on AWS.
+This repository demonstrates a complete **GitOps and CI/CD pipeline** that automates the provisioning and configuration of a secure, multi-tier cloud infrastructure on AWS.
 
 ## 🏗️ Architecture Overview
-The pipeline follows a modern DevOps workflow to deploy a functional web server from scratch:
+The pipeline implements a high-security **Bastion Host (Jump Server)** architecture to protect internal resources:
 
 ### Infrastructure as Code (Terraform)
-*   **Networking:** Custom VPC, Public Subnet, Internet Gateway, and Route Tables.
-*   **Security:** Security Groups with strictly defined ingress rules for SSH (Port 22) and HTTP (Port 80).
-*   **Compute:** AWS EC2 instance (t3.micro) running Amazon Linux 2023.
-*   **State Management:** Remote state storage using AWS S3 with encryption for team collaboration and security.
+*   **Secure Networking:** Custom VPC with isolated **Public and Private Subnets**.
+*   **Bastion Host:** A hardened entry point in the public subnet for secure SSH access.
+*   **Security Group Chaining:** The internal web server only accepts SSH traffic from the Bastion Host's security group, eliminating direct exposure to the internet.
+*   **Dynamic AMI Lookup:** Automatically fetches the latest **Amazon Linux 2023** image, ensuring up-to-date security patches.
+*   **State Management:** Remote state storage using **AWS S3** with encryption for reliability and team collaboration.
 
 ### Configuration Management (Ansible)
-*   Automated software provisioning via SSH.
-*   Installation and service management of the Apache (httpd) web server.
-*   Automated deployment of custom web content.
+*   **SSH ProxyJump:** Uses modern SSH tunneling to configure the private server through the Bastion Host.
+*   **Automated Provisioning:** Automated installation and service management of the Apache (httpd) web server.
+*   **Custom Content:** Automated deployment of a unique landing page to the target server.
 
 ### Orchestration (Jenkins Pipeline)
-*   A declarative pipeline managing the entire lifecycle.
-*   Secure credential handling for AWS and SSH keys.
-*   Real-time notifications: Integrated Discord webhooks for build status updates.
+*   **Declarative Pipeline:** Manages the full lifecycle from code checkout to deployment.
+*   **Build with Parameters:** Allows the user to choose between `apply` (create) or `destroy` (cleanup) actions at runtime.
+*   **Secure Credential Handling:** Managed storage for AWS access keys and SSH private keys.
+*   **Discord Integration:** Sends real-time, detailed notifications (Action & Status) to a Discord channel via Webhooks.
 
 ## 🚀 The Pipeline Flow
 1.  **Checkout:** Pulls the latest code from GitHub.
-2.  **Terraform Init & Plan:** Initializes the backend and previews infrastructure changes.
-3.  **Terraform Apply:** Provisions the AWS resources.
-4.  **Ansible Provisioning:** 
-    *   Dynamically retrieves the EC2 Public IP.
-    *   Sets correct permissions for the SSH deploy key.
-    *   Configures the remote server once it becomes reachable.
-
+2.  **Terraform Action:** 
+    *   `apply`: Provisions/Updates the VPC, Bastion Host, and Web Server.
+    *   `destroy`: Tears down the entire infrastructure to save costs.
+3.  **Ansible Provisioning:** (Only during `apply`)
+    *   Dynamically retrieves the Bastion Public IP and Web Server Private IP.
+    *   Performs secure software configuration using the Jump Host bridge.
+4.  **Post Actions:** Sends build status and operation type to Discord.
 
 ---
 
-## 📸 Screenshots
+## 📸 Project Evidence
 
 ### Jenkins Pipeline Success
 <img width="1700" height="756" alt="Képernyőfotó 2026-05-06 - 13 53 22" src="https://github.com/user-attachments/assets/b9908689-a829-4c72-b62a-0eae429a7d76" />
