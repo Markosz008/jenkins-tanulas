@@ -9,15 +9,14 @@ pipeline {
         AWS_ACCESS_KEY_ID     = credentials('AWS_ACCESS_KEY_ID')
         AWS_SECRET_ACCESS_KEY = credentials('AWS_SECRET_ACCESS_KEY')
         DISCORD_URL           = credentials('DISCORD_WEBHOOK')
-        // Itt definiálunk egy változót, ami megmondja, csak dokumentáció változott-e
-        IS_ONLY_DOCS          = false 
+        IS_ONLY_DOCS          = "false"
     }
 
-    stage('Check Changes') {
+    stages {
+        stage('Check Changes') {
             steps {
                 script {
-                    // Megnézzük, változott-e bármi a README-n kívül. 
-                    // A '|| true' megelőzi a hiba miatti leállást, ha nincs találat.
+                    // Megnézzük, változott-e bármi a README-n kívül.
                     def changes = sh(script: 'git diff --name-only HEAD~1 HEAD | grep -v "README.md" || true', returnStdout: true).trim()
                     
                     if (changes == "") {
@@ -32,17 +31,14 @@ pipeline {
         }
 
         stage('Terraform Init') {
-            when {
-                // Csak akkor indul el, ha az IS_ONLY_DOCS NEM 'true'
-                expression { env.IS_ONLY_DOCS != 'true' }
-            }
+            when { expression { env.IS_ONLY_DOCS != "true" } }
             steps {
                 sh 'terraform init -input=false -force-copy'
             }
         }
 
         stage('Terraform Action') {
-            when { environment name: 'IS_ONLY_DOCS', value: 'false' }
+            when { expression { env.IS_ONLY_DOCS != "true" } }
             steps {
                 script {
                     if (params.ACTION == 'apply') {
@@ -55,9 +51,9 @@ pipeline {
         }
 
         stage('Ansible Provisioning') {
-            when { 
+            when {
                 allOf {
-                    environment name: 'IS_ONLY_DOCS', value: 'false'
+                    expression { env.IS_ONLY_DOCS != "true" }
                     expression { params.ACTION == 'apply' }
                 }
             }
@@ -85,8 +81,8 @@ pipeline {
     post {
         always {
             script {
-                // Csak akkor küldünk Discord üzenetet, ha ténylegesen történt infra művelet
-                if (env.IS_ONLY_DOCS == "false") {
+                // Csak akkor küldünk üzenetet, ha ténylegesen futott az infra kód
+                if (env.IS_ONLY_DOCS != "true") {
                     def status = currentBuild.result == 'SUCCESS' ? '✅ Sikeres!' : '❌ Hibás!'
                     discordSend description: "Művelet: ${params.ACTION} - Állapot: ${status}", 
                                 title: "Project: ${JOB_NAME}", 
