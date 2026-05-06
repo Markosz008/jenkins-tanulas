@@ -29,29 +29,27 @@ pipeline {
         stage('Ansible Provisioning') {
             steps {
                 script {
+                    // Lekérjük az IP címeket
                     def bastionIp = sh(script: "terraform output -raw bastion_ip", returnStdout: true).trim()
                     def webPrivateIp = sh(script: "terraform output -raw web_private_ip", returnStdout: true).trim()
                     
                     echo "Bastion Host IP: ${bastionIp}"
                     echo "Target Private Server IP: ${webPrivateIp}"
                     
-                    // A Workspace-t használjuk, hogy biztosan legyen írási jogunk
-                    def workingDir = pwd()
-                    sh "cp /var/jenkins_home/id_rsa ${workingDir}/deploy_key"
-                    sh "chmod 400 ${workingDir}/deploy_key"
+                    // A Jenkins eredeti kulcsát használjuk közvetlenül
+                    def jenkinsKey = "/var/jenkins_home/id_rsa"
                     
                     echo "Waiting for infrastructure to be ready..."
                     sleep 30
 
+                    // Az Ansible-nek megadjuk a közvetlen utat a kulcshoz a ProxyCommand-ban is
                     sh """
                         ansible-playbook -i ${webPrivateIp}, \
-                        --private-key ${workingDir}/deploy_key \
+                        --private-key ${jenkinsKey} \
                         -u ec2-user \
-                        --ssh-common-args="-o StrictHostKeyChecking=no -o ProxyCommand='ssh -W %h:%p -q ec2-user@${bastionIp} -i ${workingDir}/deploy_key -o StrictHostKeyChecking=no'" \
+                        --ssh-common-args="-o StrictHostKeyChecking=no -o ProxyCommand='ssh -W %h:%p -q ec2-user@${bastionIp} -i ${jenkinsKey} -o StrictHostKeyChecking=no'" \
                         setup.yml
                     """
-                    
-                    sh "rm ${workingDir}/deploy_key"
                 }
             }
         }
