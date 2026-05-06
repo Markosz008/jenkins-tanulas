@@ -29,31 +29,29 @@ pipeline {
         stage('Ansible Provisioning') {
             steps {
                 script {
-                    // Lekérjük mindkét IP címet a Terraform outputból
                     def bastionIp = sh(script: "terraform output -raw bastion_ip", returnStdout: true).trim()
                     def webPrivateIp = sh(script: "terraform output -raw web_private_ip", returnStdout: true).trim()
                     
                     echo "Bastion Host IP: ${bastionIp}"
                     echo "Target Private Server IP: ${webPrivateIp}"
                     
-                    // Kulcs elökészítése
-                    sh "cp /var/jenkins_home/id_rsa ./deploy_key"
-                    sh "chmod 400 ./deploy_key"
+                    // A Workspace-t használjuk, hogy biztosan legyen írási jogunk
+                    def workingDir = pwd()
+                    sh "cp /var/jenkins_home/id_rsa ${workingDir}/deploy_key"
+                    sh "chmod 400 ${workingDir}/deploy_key"
                     
                     echo "Waiting for infrastructure to be ready..."
                     sleep 30
 
-                    // Az Ansible "mágia": ProxyCommand használata az átugráshoz
-                    // Ez azt mondja: "Csatlakozz a privát IP-re, de a Bastionon keresztül ugrálva"
                     sh """
                         ansible-playbook -i ${webPrivateIp}, \
-                        --private-key ./deploy_key \
+                        --private-key ${workingDir}/deploy_key \
                         -u ec2-user \
-                        --ssh-common-args="-o StrictHostKeyChecking=no -o ProxyCommand='ssh -W %h:%p -q ec2-user@${bastionIp} -i ./deploy_key -o StrictHostKeyChecking=no'" \
+                        --ssh-common-args="-o StrictHostKeyChecking=no -o ProxyCommand='ssh -W %h:%p -q ec2-user@${bastionIp} -i ${workingDir}/deploy_key -o StrictHostKeyChecking=no'" \
                         setup.yml
                     """
                     
-                    sh "rm ./deploy_key"
+                    sh "rm ${workingDir}/deploy_key"
                 }
             }
         }
