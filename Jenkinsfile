@@ -7,61 +7,46 @@ pipeline {
 
     environment {
         SAJAT_TITKUNK = credentials('TESZT_API_KULCS')
+        // Bekérjük a Discord Webhook URL-t a titkok közül!
+        DISCORD_URL = credentials('DISCORD_WEBHOOK')
     }
 
     stages {
-        stage('Függőségek telepítése') {
+        stage('Tesztelés') {
             steps {
-                echo 'NPM csomagok letöltése...'
-                sh 'npm install' 
+                echo 'Tesztek futtatása...'
+                sh 'npm test'
             }
         }
-        
-        // --- ÚJ RÉSZ: PÁRHUZAMOS FUTTATÁS ---
-        stage('Komplex Tesztelési Fázis') {
-            // A parallel blokkon belüli stage-ek egyszerre fognak elindulni!
-            parallel {
-                
-                stage('Gyors Egységtesztek') {
-                    steps {
-                        echo '1. szál: Node.js tesztek indítása...'
-                        sh 'npm test'
-                    }
-                }
-                
-                stage('Lassú Integrációs Tesztek') {
-                    steps {
-                        echo '2. szál: Adatbázis tesztek szimulálása...'
-                        // A 'sleep' paranccsal szimulálunk egy 5 másodperces lassú tesztet
-                        sleep time: 5, unit: 'SECONDS'
-                        echo '2. szál: Adatbázis tesztek sikeresek!'
-                    }
-                }
-                
-                stage('Biztonsági Ellenőrzés') {
-                    steps {
-                        echo '3. szál: Kód átvizsgálása sebezhetőségek után...'
-                        sleep time: 2, unit: 'SECONDS'
-                        echo '3. szál: A kód biztonságos!'
-                    }
-                }
-                
-            }
-        }
-        // --- PÁRHUZAMOS RÉSZ VÉGE ---
-        
         stage('Csomagolás') {
             steps {
-                echo 'Minden teszt sikeres! Csomagolás indul...'
+                echo 'Csomagolás indul...'
                 sh 'tar -czvf kesz-alkalmazas.tar.gz test.js package.json'
             }
         }
     }
     
+    // Ide jön az értesítés!
     post {
-        success {
-            echo 'Mentjük a fájlt...'
+        always {
             archiveArtifacts artifacts: 'kesz-alkalmazas.tar.gz', fingerprint: true
+        }
+        success {
+            echo 'Sikeres futás! Értesítés küldése Discordra...'
+            // A discordSend parancsot a plugin adta nekünk
+            discordSend description: "✅ HIBÁTLAN FUTÁS! Az új verzió sikeresen lefordítva és tesztelve. (Build #${BUILD_NUMBER})", 
+                        link: env.BUILD_URL, 
+                        result: currentBuild.currentResult, 
+                        title: "Jenkins Projekt: ${JOB_NAME}", 
+                        webhookURL: env.DISCORD_URL
+        }
+        failure {
+            echo 'Valami elromlott! Riasztás küldése Discordra...'
+            discordSend description: "❌ BAJ VAN! A Pipeline elbukott. Kérlek azonnal nézd meg a logokat! (Build #${BUILD_NUMBER})", 
+                        link: env.BUILD_URL, 
+                        result: currentBuild.currentResult, 
+                        title: "Jenkins Projekt: ${JOB_NAME}", 
+                        webhookURL: env.DISCORD_URL
         }
     }
 }
