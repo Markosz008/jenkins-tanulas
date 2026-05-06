@@ -4,7 +4,7 @@ console.log("🚀 Node.js tesztek indítása...");
 // A változó neve SAJAT_TITKUNK lesz, ezt a Jenkinsből fogjuk beküldeni.
 const apiKey = process.env.SAJAT_TITKUNK;
 
-if (apiKey === "EZ-EGY-HIBAS-KULCS") {
+if (apiKey === "SzuperTitkosKulcs123") {
     console.log("✅ SIKERES TESZT: A Jenkins sikeresen és titkosítva átadta az API kulcsot!");
     console.log("A kapott kulcs (amit a Jenkins el fog rejteni): " + apiKey);
     process.exit(0);
