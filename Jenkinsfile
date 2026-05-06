@@ -38,7 +38,7 @@ pipeline {
                     sleep 30
 
                     // Futtatjuk az Ansible-t a távoli gépen a generált kulccsal
-                    sh "ansible-playbook -i ${serverIp}, --private-key /var/jenkins_home/id_rsa -u ec2-user --ssh-common-args='-o StrictHostKeyChecking=no' setup.yml"
+                    sh "chmod 400 /var/jenkins_home/id_rsa"
                 }
             }
         }
