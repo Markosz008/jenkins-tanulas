@@ -36,7 +36,7 @@ The pipeline follows a modern DevOps workflow to deploy a functional web server 
 📸## 📸 Screenshots
 
 ### Jenkins Pipeline Success
-![Jenkins Pipeline Success](images/jenkins_pipeline.png)
+![Jenkins Pipeline Success](i<img width="1700" height="756" alt="Képernyőfotó 2026-05-06 - 13 53 22" src="https://github.com/user-attachments/assets/68a66156-518f-496c-b3da-b26b4dc62628" />)
 
 ### AWS EC2 Instance Status
-![AWS EC2 Status](images/aws_console.png)
+![AWS EC2 Status](<img width="1218" height="454" alt="Képernyőfotó 2026-05-06 - 13 52 55" src="https://github.com/user-attachments/assets/1a0ce8b2-b8ba-4867-9265-f2c9950cf784" />)
