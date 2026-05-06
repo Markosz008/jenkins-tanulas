@@ -118,7 +118,7 @@ resource "aws_security_group" "web_sg" {
 # 6. Szerverek (EC2 Instances)
 # Bastion Host
 resource "aws_instance" "bastion" {
-  ami                    = "ami-0ed09467776413204" # Amazon Linux 2023
+  ami                    = "ami-0084396898133a8fc" # JAVÍTOTT: Amazon Linux 2023 eu-central-1
   instance_type          = "t3.micro"
   subnet_id              = aws_subnet.public_subnet.id
   vpc_security_group_ids = [aws_security_group.bastion_sg.id]
@@ -128,7 +128,7 @@ resource "aws_instance" "bastion" {
 
 # Privát Web Szerver
 resource "aws_instance" "web_szerver" {
-  ami                    = "ami-0ed09467776413204"
+  ami                    = "ami-0084396898133a8fc" # JAVÍTOTT: Amazon Linux 2023 eu-central-1
   instance_type          = "t3.micro"
   subnet_id              = aws_subnet.private_subnet.id
   vpc_security_group_ids = [aws_security_group.web_sg.id]
