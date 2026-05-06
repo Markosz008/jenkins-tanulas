@@ -12,15 +12,27 @@ pipeline {
         IS_ONLY_DOCS          = "false"
     }
 
-    stages {
-        stage('Check Changes') {
+    stage('Check Changes') {
             steps {
                 script {
-                    // Megnézzük, változott-e bármi a README-n kívül.
-                    def changes = sh(script: 'git diff --name-only HEAD~1 HEAD | grep -v "README.md" || true', returnStdout: true).trim()
+                    // Lekérjük a módosított fájlok listáját
+                    def changedFiles = sh(script: 'git diff --name-only HEAD~1 HEAD || git diff --name-only HEAD^ HEAD || echo "FIRST_BUILD"', returnStdout: true).trim().split('\n')
                     
-                    if (changes == "") {
-                        echo "--- CSAK DOKUMENTÁCIÓ VÁLTOZOTT ---"
+                    echo "Módosított fájlok listája: ${changedFiles}"
+                    
+                    // Alapértelmezés szerint feltételezzük, hogy csak doksi
+                    def onlyDocs = true
+                    
+                    for (file in changedFiles) {
+                        // Ha találunk olyan fájlt, ami NEM README.md és NEM .png, akkor futtatni kell az infrát
+                        if (file != "README.md" && !file.endsWith(".png") && file != "FIRST_BUILD") {
+                            onlyDocs = false
+                            break
+                        }
+                    }
+                    
+                    if (onlyDocs) {
+                        echo "--- CSAK DOKUMENTÁCIÓ VÁLTOZOTT (vagy első build) ---"
                         env.IS_ONLY_DOCS = "true"
                     } else {
                         echo "--- INFRASTRUKTÚRA VÁLTOZÁS ÉSZLELVE ---"
@@ -29,7 +41,6 @@ pipeline {
                 }
             }
         }
-
         stage('Terraform Init') {
             when { expression { env.IS_ONLY_DOCS != "true" } }
             steps {
