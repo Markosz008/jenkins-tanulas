@@ -26,6 +26,17 @@ pipeline {
                 sh 'terraform apply --auto-approve'
             }
         }
+
+         stage('Ansible Provisioning') {
+            steps {
+                // Itt egy kis trükk: megvárjuk, amíg a szerver elindul, majd futtatjuk az Ansible-t
+                echo 'Várakozás a szerverre...'
+                sleep 30 
+                sh 'ansible-playbook -i localhost, setup.yml' 
+                // Megjegyzés: Ez most csak egy teszt futtatás lesz localhoston, 
+                // hogy lásd a Jenkinsben az Ansible kimenetet!
+            }
+        }
     }
 
     post {
