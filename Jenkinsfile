@@ -12,27 +12,27 @@ pipeline {
         IS_ONLY_DOCS          = "false"
     }
 
-    stage('Check Changes') {
+    stages {
+        stage('Check Changes') {
             steps {
                 script {
-                    // Lekérjük a módosított fájlok listáját
-                    def changedFiles = sh(script: 'git diff --name-only HEAD~1 HEAD || git diff --name-only HEAD^ HEAD || echo "FIRST_BUILD"', returnStdout: true).trim().split('\n')
+                    // Robusztusabb git diff lekérdezés
+                    def diffCmd = 'git diff --name-only HEAD~1 HEAD || git diff --name-only HEAD^ HEAD || echo "INIT_BUILD"'
+                    def changedFiles = sh(script: diffCmd, returnStdout: true).trim().split('\n')
                     
-                    echo "Módosított fájlok listája: ${changedFiles}"
+                    echo "Módosított fájlok: ${changedFiles}"
                     
-                    // Alapértelmezés szerint feltételezzük, hogy csak doksi
                     def onlyDocs = true
-                    
                     for (file in changedFiles) {
-                        // Ha találunk olyan fájlt, ami NEM README.md és NEM .png, akkor futtatni kell az infrát
-                        if (file != "README.md" && !file.endsWith(".png") && file != "FIRST_BUILD") {
+                        // Ha bármi mást találunk, ami nem doksi/kép, akkor futtatni kell az infrát
+                        if (file != "README.md" && !file.endsWith(".png") && file != "INIT_BUILD" && file != "") {
                             onlyDocs = false
                             break
                         }
                     }
                     
                     if (onlyDocs) {
-                        echo "--- CSAK DOKUMENTÁCIÓ VÁLTOZOTT (vagy első build) ---"
+                        echo "--- CSAK DOKUMENTÁCIÓ VÁLTOZOTT ---"
                         env.IS_ONLY_DOCS = "true"
                     } else {
                         echo "--- INFRASTRUKTÚRA VÁLTOZÁS ÉSZLELVE ---"
@@ -41,6 +41,7 @@ pipeline {
                 }
             }
         }
+
         stage('Terraform Init') {
             when { expression { env.IS_ONLY_DOCS != "true" } }
             steps {
@@ -92,7 +93,6 @@ pipeline {
     post {
         always {
             script {
-                // Csak akkor küldünk üzenetet, ha ténylegesen futott az infra kód
                 if (env.IS_ONLY_DOCS != "true") {
                     def status = currentBuild.result == 'SUCCESS' ? '✅ Sikeres!' : '❌ Hibás!'
                     discordSend description: "Művelet: ${params.ACTION} - Állapot: ${status}", 
