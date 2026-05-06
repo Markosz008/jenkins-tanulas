@@ -2,50 +2,31 @@ pipeline {
     agent any
 
     parameters {
-        choice(name: 'ACTION', choices: ['apply', 'destroy'], description: 'Válaszd ki a műveletet')
+        choice(name: 'ACTION', choices: ['apply', 'destroy'], description: 'Válaszd ki a műveletet (apply = építés, destroy = törlés)')
     }
 
     environment {
         AWS_ACCESS_KEY_ID     = credentials('AWS_ACCESS_KEY_ID')
         AWS_SECRET_ACCESS_KEY = credentials('AWS_SECRET_ACCESS_KEY')
         DISCORD_URL           = credentials('DISCORD_WEBHOOK')
-        IS_ONLY_DOCS          = "false"
     }
 
     stages {
-        stage('Check Changes') {
-            steps {
-                script {
-                    // Lekérjük az utolsó commit üzenetét
-                    def commitMsg = sh(script: "git log -1 --pretty=%B", returnStdout: true).trim().toLowerCase()
-                    echo "Commit üzenet: ${commitMsg}"
-
-                    // Ha az üzenetben benne van a 'readme', 'docs' vagy '[skip ci]', akkor IS_ONLY_DOCS = true
-                    if (commitMsg.contains("readme") || commitMsg.contains("docs") || commitMsg.contains("[skip ci]")) {
-                        echo "--- DOKUMENTÁCIÓ MÓDOSÍTÁS VAGY SKIP JELZÉS ÉSZLELVE ---"
-                        env.IS_ONLY_DOCS = "true"
-                    } else {
-                        echo "--- INFRASTRUKTÚRA MÓDOSÍTÁS ÉSZLELVE ---"
-                        env.IS_ONLY_DOCS = "false"
-                    }
-                }
-            }
-        }
-
         stage('Terraform Init') {
-            when { expression { env.IS_ONLY_DOCS != "true" } }
             steps {
+                // Inicializálja a Terraformot és a S3 backendet
                 sh 'terraform init -input=false -force-copy'
             }
         }
 
         stage('Terraform Action') {
-            when { expression { env.IS_ONLY_DOCS != "true" } }
             steps {
                 script {
                     if (params.ACTION == 'apply') {
+                        echo "--- Infrastruktúra kiépítése indítása ---"
                         sh 'terraform apply --auto-approve'
                     } else {
+                        echo "--- Infrastruktúra lebontása indítása ---"
                         sh 'terraform destroy --auto-approve'
                     }
                 }
@@ -53,21 +34,21 @@ pipeline {
         }
 
         stage('Ansible Provisioning') {
+            // Csak akkor fut le, ha 'apply' volt a választott művelet
             when {
-                allOf {
-                    expression { env.IS_ONLY_DOCS != "true" }
-                    expression { params.ACTION == 'apply' }
-                }
+                expression { params.ACTION == 'apply' }
             }
             steps {
                 script {
+                    // Dinamikus IP címek lekérése a Terraform outputokból
                     def bastionIp = sh(script: "terraform output -raw bastion_ip", returnStdout: true).trim()
                     def webPrivateIp = sh(script: "terraform output -raw web_private_ip", returnStdout: true).trim()
                     def jenkinsKey = "/var/jenkins_home/id_rsa"
                     
-                    echo "Várakozás az infrastruktúra készre jelentésére..."
+                    echo "Várakozás 30 másodpercet az instance-ok indulására..."
                     sleep 30
 
+                    // Ansible futtatása ProxyJump használatával a Bastion hoston keresztül
                     sh """
                         ansible-playbook -i ${webPrivateIp}, \
                         --private-key ${jenkinsKey} \
@@ -81,15 +62,18 @@ pipeline {
     }
 
     post {
-        always {
+        success {
             script {
-                // Csak akkor küldünk értesítést, ha ténylegesen futott az infra folyamat
-                if (env.IS_ONLY_DOCS != "true") {
-                    def status = currentBuild.result == 'SUCCESS' ? '✅ Sikeres!' : '❌ Hibás!'
-                    discordSend description: "Művelet: ${params.ACTION} - Állapot: ${status}", 
-                                title: "Project: ${JOB_NAME}", 
-                                webhookURL: env.DISCORD_URL
-                }
+                discordSend description: "Művelet: ${params.ACTION} - Állapot: ✅ SIKERES", 
+                            title: "Project: ${JOB_NAME}", 
+                            webhookURL: env.DISCORD_URL
+            }
+        }
+        failure {
+            script {
+                discordSend description: "Művelet: ${params.ACTION} - Állapot: ❌ HIBA TÖRTÉNT", 
+                            title: "Project: ${JOB_NAME}", 
+                            webhookURL: env.DISCORD_URL
             }
         }
     }
