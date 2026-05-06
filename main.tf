@@ -62,7 +62,8 @@ resource "aws_security_group" "jenkins_access" {
 
 # 4. Az EC2 Szerver (A celpont az Ansible-nek)
 resource "aws_instance" "web_szerver" {
-  ami                    = "ami-0de02246788e4a350" # Amazon Linux 2023 (Frankfurt)
+  # Ez az aktuális Amazon Linux 2023 AMI Frankfurtban (eu-central-1)
+  ami                    = "ami-0084a47cc718c111a" 
   instance_type          = "t2.micro"
   subnet_id              = aws_subnet.elso_alhalozat.id
   vpc_security_group_ids = [aws_security_group.jenkins_access.id]
