@@ -23,7 +23,7 @@ provider "aws" {
 resource "aws_key_pair" "jenkins_key" {
   key_name   = "jenkins-key"
   # IDE ILLESZD BE a /var/jenkins_home/id_rsa.pub tartalmát:
-  public_key = "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAACAQ..." 
+  public_key = "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAACAQDPN47hdfnKP9ubS6MGGpo+viXlhWsIWOfRUR72tyBhRV4gByf9y5w9IhNvijqVfvvovPu60DtFV/N3ZVrpSmmUF7iSoTshhls8fJ5LizL7Ewyip830Veg2HMpSWuqVDlUDWMhC37UxIngrxmTjQhRHQj6gXLUy33JrpbX9XAIcZJHuwnkvcJZ97Qfxl1x4sLMkhy7ZXW3t+CEPkgwdLmRDJykh263n4sMTqFR05AVm4VsNSf9iriqiwwReRd2QZpdt3e0kXSlt61/JeGIbIandTPU9vKo0XVuDk6VZSTT+Im7ndxBdE7VYczqZQrYVeIkp5WHsKVkM7HtnNNfW7sgBESZN2ZPzl85PEh2QNXQOmXgY9L2IZuUapSHjq3d4MWMNjCZADTp+CBmPZYEwvnMOx01+amamR6PqYXY+hyILzzRZpGui6E6j+6L9j8zSXeTd6lQrBvp+6vtsLB/lJFKxejDeBONbh/UdoVBcwxrUf3I8gGNHAj/h0bBGiOUAshAvt9o9zxENZy2GlGGy0gbnRMvwV59HZLyPnDTUg/2o+QkI2RyGc+WH9FpLY5ZKaQ5PXIkIdgXGfBv3FT3by+FkT7S6K/3pg8ZP7IWlGyQNs4lEWvNapQKR5mnl20xK9Kl87qfQzOflsAWBtu5lEb8EflfEoKH64tcJ6/BOdLa0BQ== root@d35f67224ea7" 
 }
 
 # 1. A hálózat (VPC)
