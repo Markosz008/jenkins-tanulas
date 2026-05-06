@@ -12,30 +12,18 @@ pipeline {
         IS_ONLY_DOCS          = "false"
     }
 
-    stages {
-        stage('Check Changes') {
+    stage('Check Changes') {
             steps {
                 script {
-                    // Robusztusabb git diff lekérdezés
-                    def diffCmd = 'git diff --name-only HEAD~1 HEAD || git diff --name-only HEAD^ HEAD || echo "INIT_BUILD"'
-                    def changedFiles = sh(script: diffCmd, returnStdout: true).trim().split('\n')
-                    
-                    echo "Módosított fájlok: ${changedFiles}"
-                    
-                    def onlyDocs = true
-                    for (file in changedFiles) {
-                        // Ha bármi mást találunk, ami nem doksi/kép, akkor futtatni kell az infrát
-                        if (file != "README.md" && !file.endsWith(".png") && file != "INIT_BUILD" && file != "") {
-                            onlyDocs = false
-                            break
-                        }
-                    }
-                    
-                    if (onlyDocs) {
-                        echo "--- CSAK DOKUMENTÁCIÓ VÁLTOZOTT ---"
+                    // Lekérjük a legutóbbi commit üzenetét
+                    def commitMsg = sh(script: "git log -1 --pretty=%B", returnStdout: true).trim().toLowerCase()
+                    echo "Commit üzenet: ${commitMsg}"
+
+                    // Ha a commit üzenet tartalmazza a 'README' szót vagy csak dokumentáció jellegű
+                    if (commitMsg.contains("readme") || commitMsg.contains("docs") || commitMsg.contains("update readme")) {
+                        echo "--- DOKUMENTÁCIÓ MÓDOSÍTÁS ÉSZLELVE (SKIP) ---"
                         env.IS_ONLY_DOCS = "true"
                     } else {
-                        echo "--- INFRASTRUKTÚRA VÁLTOZÁS ÉSZLELVE ---"
                         env.IS_ONLY_DOCS = "false"
                     }
                 }
