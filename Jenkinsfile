@@ -9,7 +9,7 @@ pipeline {
         }
         stage('Test') {
             steps {
-                echo 'Tesztek futtatása...'
+                echo 'Tesztek futtatása AUTOMATIKUSAN indítva!!!'
                 sh 'echo "Sikeres teszt!"'
             }
         }
