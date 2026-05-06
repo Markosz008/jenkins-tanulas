@@ -13,15 +13,19 @@ pipeline {
         IS_ONLY_DOCS          = false 
     }
 
-    stages {
-        stage('Check Changes') {
+    stage('Check Changes') {
             steps {
                 script {
-                    // Megnézzük, van-e bármi más változás a README-n kívül
+                    // Megnézzük, változott-e bármi a README-n kívül. 
+                    // A '|| true' megelőzi a hiba miatti leállást, ha nincs találat.
                     def changes = sh(script: 'git diff --name-only HEAD~1 HEAD | grep -v "README.md" || true', returnStdout: true).trim()
+                    
                     if (changes == "") {
-                        echo "Csak dokumentáció változott. Jelölés: SKIP_INFRA = true"
+                        echo "--- CSAK DOKUMENTÁCIÓ VÁLTOZOTT ---"
                         env.IS_ONLY_DOCS = "true"
+                    } else {
+                        echo "--- INFRASTRUKTÚRA VÁLTOZÁS ÉSZLELVE ---"
+                        env.IS_ONLY_DOCS = "false"
                     }
                 }
             }
