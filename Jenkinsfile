@@ -12,18 +12,20 @@ pipeline {
         IS_ONLY_DOCS          = "false"
     }
 
-    stage('Check Changes') {
+    stages {
+        stage('Check Changes') {
             steps {
                 script {
-                    // Lekérjük a legutóbbi commit üzenetét
+                    // Lekérjük az utolsó commit üzenetét
                     def commitMsg = sh(script: "git log -1 --pretty=%B", returnStdout: true).trim().toLowerCase()
                     echo "Commit üzenet: ${commitMsg}"
 
-                    // Ha a commit üzenet tartalmazza a 'README' szót vagy csak dokumentáció jellegű
-                    if (commitMsg.contains("readme") || commitMsg.contains("docs") || commitMsg.contains("update readme")) {
-                        echo "--- DOKUMENTÁCIÓ MÓDOSÍTÁS ÉSZLELVE (SKIP) ---"
+                    // Ha az üzenetben benne van a 'readme', 'docs' vagy '[skip ci]', akkor IS_ONLY_DOCS = true
+                    if (commitMsg.contains("readme") || commitMsg.contains("docs") || commitMsg.contains("[skip ci]")) {
+                        echo "--- DOKUMENTÁCIÓ MÓDOSÍTÁS VAGY SKIP JELZÉS ÉSZLELVE ---"
                         env.IS_ONLY_DOCS = "true"
                     } else {
+                        echo "--- INFRASTRUKTÚRA MÓDOSÍTÁS ÉSZLELVE ---"
                         env.IS_ONLY_DOCS = "false"
                     }
                 }
@@ -63,7 +65,7 @@ pipeline {
                     def webPrivateIp = sh(script: "terraform output -raw web_private_ip", returnStdout: true).trim()
                     def jenkinsKey = "/var/jenkins_home/id_rsa"
                     
-                    echo "Waiting for infrastructure to be ready..."
+                    echo "Várakozás az infrastruktúra készre jelentésére..."
                     sleep 30
 
                     sh """
@@ -81,6 +83,7 @@ pipeline {
     post {
         always {
             script {
+                // Csak akkor küldünk értesítést, ha ténylegesen futott az infra folyamat
                 if (env.IS_ONLY_DOCS != "true") {
                     def status = currentBuild.result == 'SUCCESS' ? '✅ Sikeres!' : '❌ Hibás!'
                     discordSend description: "Művelet: ${params.ACTION} - Állapot: ${status}", 
