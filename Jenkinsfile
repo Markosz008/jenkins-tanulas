@@ -29,18 +29,22 @@ pipeline {
         stage('Ansible Provisioning') {
             steps {
                 script {
-                    // Lekérjük a publikus IP-t
+                    / Lekérjük a publikus IP-t
                     def serverIp = sh(script: "terraform output -raw public_ip", returnStdout: true).trim()
                     echo "Szerver IP címe: ${serverIp}"
                     
-                    // JOGOSULTSÁG JAVÍTÁSA: Csak az aktuális felhasználó olvashatja (fontos az SSH-hoz!)
-                    sh "chmod 400 /var/jenkins_home/id_rsa"
+                    // KERÜLŐÚT: Átmásoljuk a kulcsot a munkaterületre, ott biztosan van jogunk módosítani
+                    sh "cp /var/jenkins_home/id_rsa ./deploy_key"
+                    sh "chmod 400 ./deploy_key"
                     
                     echo "Várakozás az SSH-ra (30 mp)..."
                     sleep 30
 
-                    // Futtatjuk az Ansible-t
-                    sh "ansible-playbook -i ${serverIp}, --private-key /var/jenkins_home/id_rsa -u ec2-user --ssh-common-args='-o StrictHostKeyChecking=no' setup.yml"
+                    // Futtatjuk az Ansible-t az ideiglenes kulccsal
+                    sh "ansible-playbook -i ${serverIp}, --private-key ./deploy_key -u ec2-user --ssh-common-args='-o StrictHostKeyChecking=no' setup.yml"
+                    
+                    // Töröljük a másolt kulcsot a build végén (biztonság)
+                    sh "rm ./deploy_key"
                 }
             }
         }
