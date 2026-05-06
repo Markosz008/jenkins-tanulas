@@ -1,0 +1,20 @@
+---
+- name: Web szerver beállítása
+  hosts: all
+  become: yes # Admin (sudo) jogokkal fusson
+  tasks:
+    - name: Apache webszerver telepítése
+      yum:
+        name: httpd
+        state: present
+
+    - name: Apache elindítása
+      service:
+        name: httpd
+        state: started
+        enabled: yes
+
+    - name: Egyedi kezdőlap létrehozása
+      copy:
+        content: "<h1>Ezt az Ansible telepítette a Jenkins-en keresztül!</h1>"
+        dest: /var/www/html/index.html
