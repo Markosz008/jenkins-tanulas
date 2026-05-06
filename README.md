@@ -21,4 +21,5 @@ This project demonstrates a professional CI/CD pipeline for deploying AWS infras
 4. **AWS:** Provisions the networking infrastructure.
 5. **Discord:** Sends a status report to the developer.
 
+📸 Screenshot
 <img width="1722" height="478" alt="Képernyőfotó 2026-05-06 - 12 32 22" src="https://github.com/user-attachments/assets/ff1ff397-480e-44ac-9a4b-04f33eba9793" />
