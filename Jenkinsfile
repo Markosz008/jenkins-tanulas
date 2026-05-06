@@ -29,21 +29,18 @@ pipeline {
         stage('Ansible Provisioning') {
             steps {
                 script {
-                    / Lekérjük a publikus IP-t
                     def serverIp = sh(script: "terraform output -raw public_ip", returnStdout: true).trim()
-                    echo "Szerver IP címe: ${serverIp}"
+                    echo "Target Server IP: ${serverIp}"
                     
-                    // KERÜLŐÚT: Átmásoljuk a kulcsot a munkaterületre, ott biztosan van jogunk módosítani
+                    // Workaround for SSH key permissions
                     sh "cp /var/jenkins_home/id_rsa ./deploy_key"
                     sh "chmod 400 ./deploy_key"
                     
-                    echo "Várakozás az SSH-ra (30 mp)..."
+                    echo "Waiting for SSH to be ready..."
                     sleep 30
 
-                    // Futtatjuk az Ansible-t az ideiglenes kulccsal
                     sh "ansible-playbook -i ${serverIp}, --private-key ./deploy_key -u ec2-user --ssh-common-args='-o StrictHostKeyChecking=no' setup.yml"
                     
-                    // Töröljük a másolt kulcsot a build végén (biztonság)
                     sh "rm ./deploy_key"
                 }
             }
@@ -52,15 +49,15 @@ pipeline {
 
     post {
         failure {
-            echo 'Hiba történt!'
-            discordSend description: "❌ AWS Terraform + Ansible Build #${BUILD_NUMBER} elbukott!", 
-                        title: "Hiba a projektben: ${JOB_NAME}", 
+            echo 'Build Failed!'
+            discordSend description: "❌ Build #${BUILD_NUMBER} failed!", 
+                        title: "Project: ${JOB_NAME}", 
                         webhookURL: env.DISCORD_URL
         }
         success {
-            echo 'Siker!'
-            discordSend description: "✅ AWS Terraform + Ansible Build #${BUILD_NUMBER} sikeresen lefutott!", 
-                        title: "Siker: ${JOB_NAME}", 
+            echo 'Build Success!'
+            discordSend description: "✅ Build #${BUILD_NUMBER} successful!", 
+                        title: "Project: ${JOB_NAME}", 
                         webhookURL: env.DISCORD_URL
         }
     }
