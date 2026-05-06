@@ -64,9 +64,9 @@ pipeline {
         }
         success {
             echo 'Build Success!'
-            discordSend description: "✅ Bastion Architecture Build #${BUILD_NUMBER} successful!\nWeb Server is now secured in a Private Subnet.", 
-                        title: "Project: ${JOB_NAME}", 
-                        webhookURL: env.DISCORD_URL
+            discordSend description: "Művelet: ${params.ACTION} - Állapot: ✅ Sikeres!", 
+            title: "Project: ${JOB_NAME}", 
+            webhookURL: env.DISCORD_URL
         }
     }
 }
