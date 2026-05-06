@@ -20,11 +20,11 @@ pipeline {
             }
         }
 
-        stage('Terraform Destroy') {
-    steps {
-        sh 'terraform destroy --auto-approve'
-    }
-}
+        stage('Terraform Apply') {
+            steps {
+                sh 'terraform apply --auto-approve'
+            }
+        }
 
         stage('Ansible Provisioning') {
             steps {
