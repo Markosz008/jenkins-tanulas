@@ -29,15 +29,19 @@ pipeline {
 
          stage('Ansible Provisioning') {
             steps {
-                // Itt egy kis trükk: megvárjuk, amíg a szerver elindul, majd futtatjuk az Ansible-t
-                echo 'Várakozás a szerverre...'
-                sleep 30 
-                sh 'ansible-playbook -i localhost, setup.yml' 
-                // Megjegyzés: Ez most csak egy teszt futtatás lesz localhoston, 
-                // hogy lásd a Jenkinsben az Ansible kimenetet!
+                script {
+                    // Lekérjük a publikus IP-t a Terraformtól
+                    def serverIp = sh(script: "terraform output -raw public_ip", returnStdout: true).trim()
+                    echo "Szerver IP címe: ${serverIp}"
+                    
+                    // Várakozunk kicsit, hogy az SSH szolgáltatás elinduljon a távoli gépen
+                    sleep 20 
+
+                    // Futtatjuk az Ansible-t a távoli gépre
+                    sh "ansible-playbook -i ${serverIp}, --private-key /var/jenkins_home/id_rsa -u ec2-user --ssh-common-args='-o StrictHostKeyChecking=no' setup.yml"
+                }
             }
         }
-    }
 
     post {
         failure {
