@@ -1,6 +1,10 @@
 pipeline {
     agent any
 
+    parameters {
+        choice(name: 'ACTION', choices: ['apply', 'destroy'], description: 'Válaszd ki, hogy építeni vagy bontani akarsz')
+    }
+
     environment {
         AWS_ACCESS_KEY_ID     = credentials('AWS_ACCESS_KEY_ID')
         AWS_SECRET_ACCESS_KEY = credentials('AWS_SECRET_ACCESS_KEY')
@@ -14,35 +18,31 @@ pipeline {
             }
         }
 
-        stage('Terraform Plan') {
+        stage('Terraform Action') {
             steps {
-                sh 'terraform plan'
-            }
-        }
-
-        stage('Terraform Apply') {
-            steps {
-                sh 'terraform apply --auto-approve'
+                script {
+                    if (params.ACTION == 'apply') {
+                        sh 'terraform apply --auto-approve'
+                    } else {
+                        sh 'terraform destroy --auto-approve'
+                    }
+                }
             }
         }
 
         stage('Ansible Provisioning') {
+            when {
+                expression { params.ACTION == 'apply' }
+            }
             steps {
                 script {
-                    // Lekérjük az IP címeket
                     def bastionIp = sh(script: "terraform output -raw bastion_ip", returnStdout: true).trim()
                     def webPrivateIp = sh(script: "terraform output -raw web_private_ip", returnStdout: true).trim()
-                    
-                    echo "Bastion Host IP: ${bastionIp}"
-                    echo "Target Private Server IP: ${webPrivateIp}"
-                    
-                    // A Jenkins eredeti kulcsát használjuk közvetlenül
                     def jenkinsKey = "/var/jenkins_home/id_rsa"
                     
                     echo "Waiting for infrastructure to be ready..."
                     sleep 30
 
-                    // Az Ansible-nek megadjuk a közvetlen utat a kulcshoz a ProxyCommand-ban is
                     sh """
                         ansible-playbook -i ${webPrivateIp}, \
                         --private-key ${jenkinsKey} \
