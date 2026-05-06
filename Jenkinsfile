@@ -10,35 +10,57 @@ pipeline {
     }
 
     stages {
-        stage('Függőségek telepítése (Build)') {
+        stage('Függőségek telepítése') {
             steps {
                 echo 'NPM csomagok letöltése...'
                 sh 'npm install' 
             }
         }
         
-        stage('Automatizált Tesztelés') {
-            steps {
-                echo 'Tesztek futtatása...'
-                sh 'npm test'
+        // --- ÚJ RÉSZ: PÁRHUZAMOS FUTTATÁS ---
+        stage('Komplex Tesztelési Fázis') {
+            // A parallel blokkon belüli stage-ek egyszerre fognak elindulni!
+            parallel {
+                
+                stage('Gyors Egységtesztek') {
+                    steps {
+                        echo '1. szál: Node.js tesztek indítása...'
+                        sh 'npm test'
+                    }
+                }
+                
+                stage('Lassú Integrációs Tesztek') {
+                    steps {
+                        echo '2. szál: Adatbázis tesztek szimulálása...'
+                        // A 'sleep' paranccsal szimulálunk egy 5 másodperces lassú tesztet
+                        sleep time: 5, unit: 'SECONDS'
+                        echo '2. szál: Adatbázis tesztek sikeresek!'
+                    }
+                }
+                
+                stage('Biztonsági Ellenőrzés') {
+                    steps {
+                        echo '3. szál: Kód átvizsgálása sebezhetőségek után...'
+                        sleep time: 2, unit: 'SECONDS'
+                        echo '3. szál: A kód biztonságos!'
+                    }
+                }
+                
             }
         }
+        // --- PÁRHUZAMOS RÉSZ VÉGE ---
         
-        // ÚJ SZAKASZ: Csomagolás
-        stage('Csomagolás (Package)') {
+        stage('Csomagolás') {
             steps {
-                echo 'A kész alkalmazás becsomagolása telepítéshez...'
-                // A 'tar' parancs készít egy tömörített fájlt a kódjainkból
+                echo 'Minden teszt sikeres! Csomagolás indul...'
                 sh 'tar -czvf kesz-alkalmazas.tar.gz test.js package.json'
             }
         }
     }
     
-    // ÚJ BLOKK: Post action (Utómunkálatok)
     post {
         success {
-            echo 'A Pipeline sikeres! Mentjük a kész csomagot...'
-            // Az archiveArtifacts parancs menti el a fájlt a Jenkins felületére
+            echo 'Mentjük a fájlt...'
             archiveArtifacts artifacts: 'kesz-alkalmazas.tar.gz', fingerprint: true
         }
     }
