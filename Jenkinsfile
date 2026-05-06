@@ -2,9 +2,10 @@ pipeline {
     agent any
 
     environment {
-        // Itt kötjük össze a Jenkins titkait a Terraform környezeti változóival
+        // Ellenőrizd, hogy a Jenkinsben az ID-k pontosan ezek!
         AWS_ACCESS_KEY_ID     = credentials('AWS_ACCESS_KEY_ID')
         AWS_SECRET_ACCESS_KEY = credentials('AWS_SECRET_ACCESS_KEY')
+        DISCORD_URL           = credentials('DISCORD_WEBHOOK')
     }
 
     stages {
@@ -16,25 +17,30 @@ pipeline {
 
         stage('Terraform Plan') {
             steps {
-                // A 'plan' megmutatja, mit fog csinálni, de nem épít semmit
                 sh 'terraform plan'
             }
         }
 
         stage('Terraform Apply') {
             steps {
-                // Az '--auto-approve' azért kell, mert a Jenkins nem tud "yes"-t gépelni
                 sh 'terraform apply --auto-approve'
             }
         }
     }
 
     post {
-        always {
-            // Discord értesítés (ha még megvan a titkod a Jenkinsben)
-            discordSend description: "AWS Infrastruktúra státusz: ${currentBuild.currentResult}", 
-                        title: "Terraform Projekt: ${JOB_NAME}", 
-                        webhookURL: credentials('DISCORD_WEBHOOK')
+        failure {
+            echo 'Hiba történt!'
+            // Letisztultabb Discord küldés
+            discordSend description: "❌ AWS Terraform Build #${BUILD_NUMBER} elbukott!", 
+                        title: "Hiba a projektben: ${JOB_NAME}", 
+                        webhookURL: env.DISCORD_URL
+        }
+        success {
+            echo 'Siker!'
+            discordSend description: "✅ AWS Terraform Build #${BUILD_NUMBER} sikeresen lefutott!", 
+                        title: "Siker: ${JOB_NAME}", 
+                        webhookURL: env.DISCORD_URL
         }
     }
 }
