@@ -64,7 +64,7 @@ resource "aws_security_group" "jenkins_access" {
 resource "aws_instance" "web_szerver" {
   # Ez az aktuális Amazon Linux 2023 AMI Frankfurtban (eu-central-1)
   ami                    = "ami-0084a47cc718c111a" 
-  instance_type          = "t2.micro"
+  instance_type          = "t3.micro"
   subnet_id              = aws_subnet.elso_alhalozat.id
   vpc_security_group_ids = [aws_security_group.jenkins_access.id]
 
