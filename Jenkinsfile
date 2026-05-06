@@ -1,31 +1,29 @@
 pipeline {
     agent any
     
-    // Itt mondjuk meg a Jenkinsnek, hogy töltse le és használja a Node.js-t
     tools {
-        nodejs 'node18' // Ennek egyeznie kell azzal a névvel, amit a Tools-ban adtál meg!
+        nodejs 'node18'
+    }
+
+    // Itt definiáljuk a környezeti változókat az egész Pipeline-ra vonatkozóan
+    environment {
+        // Létrehozunk egy SAJAT_TITKUNK változót, és beletöltjük a credentials() paranccsal
+        // azt a titkot, amit az 1. lépésben TESZT_API_KULCS néven mentettünk el.
+        SAJAT_TITKUNK = credentials('TESZT_API_KULCS')
     }
 
     stages {
         stage('Függőségek telepítése (Build)') {
             steps {
                 echo 'NPM csomagok letöltése...'
-                // Ez a parancs letöltené a szükséges könyvtárakat (most még nincsenek)
                 sh 'npm install' 
             }
         }
         
         stage('Automatizált Tesztelés') {
             steps {
-                echo 'Node.js tesztszkript futtatása...'
-                // Ez a parancs futtatja le a package.json-ban definiált "test" scriptet
+                echo 'Node.js tesztszkript futtatása titkos kulccsal...'
                 sh 'npm test'
-            }
-        }
-        
-        stage('Telepítés (Deploy)') {
-            steps {
-                echo 'Sikeres teszt! Az alkalmazás mehet az éles szerverre.'
             }
         }
     }
