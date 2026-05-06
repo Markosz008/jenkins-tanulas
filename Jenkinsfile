@@ -5,10 +5,7 @@ pipeline {
         nodejs 'node18'
     }
 
-    // Itt definiáljuk a környezeti változókat az egész Pipeline-ra vonatkozóan
     environment {
-        // Létrehozunk egy SAJAT_TITKUNK változót, és beletöltjük a credentials() paranccsal
-        // azt a titkot, amit az 1. lépésben TESZT_API_KULCS néven mentettünk el.
         SAJAT_TITKUNK = credentials('TESZT_API_KULCS')
     }
 
@@ -22,9 +19,27 @@ pipeline {
         
         stage('Automatizált Tesztelés') {
             steps {
-                echo 'Node.js tesztszkript futtatása titkos kulccsal...'
+                echo 'Tesztek futtatása...'
                 sh 'npm test'
             }
+        }
+        
+        // ÚJ SZAKASZ: Csomagolás
+        stage('Csomagolás (Package)') {
+            steps {
+                echo 'A kész alkalmazás becsomagolása telepítéshez...'
+                // A 'tar' parancs készít egy tömörített fájlt a kódjainkból
+                sh 'tar -czvf kesz-alkalmazas.tar.gz test.js package.json'
+            }
+        }
+    }
+    
+    // ÚJ BLOKK: Post action (Utómunkálatok)
+    post {
+        success {
+            echo 'A Pipeline sikeres! Mentjük a kész csomagot...'
+            // Az archiveArtifacts parancs menti el a fájlt a Jenkins felületére
+            archiveArtifacts artifacts: 'kesz-alkalmazas.tar.gz', fingerprint: true
         }
     }
 }
