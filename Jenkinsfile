@@ -2,23 +2,40 @@ pipeline {
     agent any
 
     parameters {
-        choice(name: 'ACTION', choices: ['apply', 'destroy'], description: 'Válaszd ki, hogy építeni vagy bontani akarsz')
+        choice(name: 'ACTION', choices: ['apply', 'destroy'], description: 'Válaszd ki a műveletet')
     }
 
     environment {
         AWS_ACCESS_KEY_ID     = credentials('AWS_ACCESS_KEY_ID')
         AWS_SECRET_ACCESS_KEY = credentials('AWS_SECRET_ACCESS_KEY')
         DISCORD_URL           = credentials('DISCORD_WEBHOOK')
+        // Itt definiálunk egy változót, ami megmondja, csak dokumentáció változott-e
+        IS_ONLY_DOCS          = false 
     }
 
     stages {
+        stage('Check Changes') {
+            steps {
+                script {
+                    // Megnézzük, van-e bármi más változás a README-n kívül
+                    def changes = sh(script: 'git diff --name-only HEAD~1 HEAD | grep -v "README.md" || true', returnStdout: true).trim()
+                    if (changes == "") {
+                        echo "Csak dokumentáció változott. Jelölés: SKIP_INFRA = true"
+                        env.IS_ONLY_DOCS = "true"
+                    }
+                }
+            }
+        }
+
         stage('Terraform Init') {
+            when { environment name: 'IS_ONLY_DOCS', value: 'false' }
             steps {
                 sh 'terraform init -input=false -force-copy'
             }
         }
 
         stage('Terraform Action') {
+            when { environment name: 'IS_ONLY_DOCS', value: 'false' }
             steps {
                 script {
                     if (params.ACTION == 'apply') {
@@ -31,8 +48,11 @@ pipeline {
         }
 
         stage('Ansible Provisioning') {
-            when {
-                expression { params.ACTION == 'apply' }
+            when { 
+                all {
+                    environment name: 'IS_ONLY_DOCS', value: 'false'
+                    expression { params.ACTION == 'apply' }
+                }
             }
             steps {
                 script {
@@ -56,17 +76,16 @@ pipeline {
     }
 
     post {
-        failure {
-            echo 'Build Failed!'
-            discordSend description: "❌ Bastion Architecture Build #${BUILD_NUMBER} failed!", 
-                        title: "Project: ${JOB_NAME}", 
-                        webhookURL: env.DISCORD_URL
-        }
-        success {
-            echo 'Build Success!'
-            discordSend description: "Művelet: ${params.ACTION} - Állapot: ✅ Sikeres!", 
-            title: "Project: ${JOB_NAME}", 
-            webhookURL: env.DISCORD_URL
+        always {
+            script {
+                // Csak akkor küldünk Discord üzenetet, ha ténylegesen történt infra művelet
+                if (env.IS_ONLY_DOCS == "false") {
+                    def status = currentBuild.result == 'SUCCESS' ? '✅ Sikeres!' : '❌ Hibás!'
+                    discordSend description: "Művelet: ${params.ACTION} - Állapot: ${status}", 
+                                title: "Project: ${JOB_NAME}", 
+                                webhookURL: env.DISCORD_URL
+                }
+            }
         }
     }
 }
