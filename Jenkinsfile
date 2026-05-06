@@ -28,7 +28,10 @@ pipeline {
         }
 
         stage('Terraform Init') {
-            when { environment name: 'IS_ONLY_DOCS', value: 'false' }
+            when {
+                // Csak akkor indul el, ha az IS_ONLY_DOCS NEM 'true'
+                expression { env.IS_ONLY_DOCS != 'true' }
+            }
             steps {
                 sh 'terraform init -input=false -force-copy'
             }
