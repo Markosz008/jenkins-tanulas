@@ -32,7 +32,21 @@ The pipeline implements a high-security **Bastion Host (Jump Server)** architect
     *   Dynamically retrieves the Bastion Public IP and Web Server Private IP.
     *   Performs secure software configuration using the Jump Host bridge.
 4.  **Post Actions:** Sends build status and operation type to Discord.
+## 🛠️ Technical Details & Security Features
 
+### CI/CD Logic & Optimization
+*   **Intelligent Path Filtering:** The pipeline includes a custom Groovy script that analyzes git changes. If only documentation (`README.md`) is modified, the pipeline skips all resource-heavy infrastructure stages (Terraform & Ansible) to save time and compute costs.
+*   **Idempotent Design:** Both Terraform and Ansible are configured to ensure that running the pipeline multiple times results in the same state without unnecessary resource duplication.
+
+### Security Hardening
+*   **Jump Host (Bastion) Pattern:** The web server resides in a subnet where port 22 is NOT exposed to the public internet. Access is only possible via a secure SSH tunnel through the Bastion Host.
+*   **Credential Management:** No secrets or private keys are stored in the repository. All sensitive data (AWS Keys, SSH Private Keys, Webhooks) are managed through Jenkins Credentials Provider.
+*   **Least Privilege:** Security groups are configured with the minimum necessary permissions, following cloud security best practices.
+
+## 📊 Deployment Logic
+The following diagram represents the automated flow of the project:
+
+1. **Code Push** -> 2. **Jenkins Trigger** -> 3. **Path Filtering** -> 4. **Infrastructure (TF)** -> 5. **Configuration (Ansible)** -> 6. **Discord Notify**
 ---
 
 ## 📸 Project Evidence
