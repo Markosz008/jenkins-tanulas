@@ -8,10 +8,10 @@ pipeline {
         DISCORD_URL           = credentials('DISCORD_WEBHOOK')
     }
 
-    stages {
-        stage('Terraform Init') {
+   stage('Terraform Init') {
             steps {
-                sh 'terraform init'
+                // A -force-copy automatikusan átmásolja a helyi state-et az S3-ba kérdezés nélkül
+                sh 'terraform init -input=false -force-copy'
             }
         }
 
