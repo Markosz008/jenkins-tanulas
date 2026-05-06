@@ -49,7 +49,7 @@ pipeline {
 
         stage('Ansible Provisioning') {
             when { 
-                all {
+                allOf {
                     environment name: 'IS_ONLY_DOCS', value: 'false'
                     expression { params.ACTION == 'apply' }
                 }
