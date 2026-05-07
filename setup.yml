@@ -1,11 +1,18 @@
 ---
 - name: Web szerver beállítása
-  hosts: all
-  become: yes # Admin (sudo) jogokkal fusson
+  hosts: webservers  # <--- Itt CSAK a webservers csoportra szűrünk!
+  become: yes
+  vars:
+    app_name: "2048 Játék"
+    github_repo: "https://github.com/gabrielecirulli/2048.git"
+    dest_path: "/var/www/html/2048"
+
   tasks:
-    - name: Apache webszerver telepítése
+    - name: Apache és Git telepítése egyszerre
       yum:
-        name: httpd
+        name: 
+          - httpd
+          - git
         state: present
 
     - name: Apache elindítása
@@ -14,7 +21,13 @@
         state: started
         enabled: yes
 
-    - name: Egyedi kezdőlap létrehozása
+    - name: Alkalmazás letöltése a repóból
+      git:
+        repo: "{{ github_repo }}"
+        dest: "{{ dest_path }}"
+        version: master
+
+    - name: Egyedi kezdőlap létrehozása változóval
       copy:
-        content: "<h1>Ezt az Ansible telepítette a Jenkins-en keresztül!</h1>"
+        content: "<h1>Markosz DevOps Szervere - Ez a {{ app_name }} projekt.</h1><a href='/2048/'>Kattints ide!</a>"
         dest: /var/www/html/index.html
