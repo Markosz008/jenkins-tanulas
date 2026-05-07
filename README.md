@@ -1,72 +1,39 @@
-# AWS Infrastructure Automation with Jenkins, Terraform & Ansible
+# 🚀 Automated Scalable Web Stack on AWS
 
-This repository demonstrates a complete **GitOps and CI/CD pipeline** that automates the provisioning and configuration of a secure, multi-tier cloud infrastructure on AWS.
+A professional CI/CD pipeline demonstrating a highly available and scalable Flask application deployed on AWS using **Terraform**, **Ansible**, and **Jenkins**.
 
 ## 🏗️ Architecture Overview
-The pipeline implements a high-security **Bastion Host (Jump Server)** architecture to protect internal resources:
+* **Networking:** Custom VPC with Public Subnet (Bastion Host) and Private Subnets (App & DB layers).
+* **Load Balancing:** Application Load Balancer (ALB) as the single entry point for traffic distribution.
+* **Auto Scaling:** Dynamic EC2 instance management for automated scaling and high availability.
+* **Database:** Managed Amazon RDS (MySQL) for persistent data storage.
+* **Automation:** Terraform (Infrastructure), Ansible (Configuration), and Jenkins (Orchestration).
 
-### Infrastructure as Code (Terraform)
-*   **Secure Networking:** Custom VPC with isolated **Public and Private Subnets**.
-*   **Bastion Host:** A hardened entry point in the public subnet for secure SSH access.
-*   **Security Group Chaining:** The internal web server only accepts SSH traffic from the Bastion Host's security group, eliminating direct exposure to the internet.
-*   **Dynamic AMI Lookup:** Automatically fetches the latest **Amazon Linux 2023** image, ensuring up-to-date security patches.
-*   **State Management:** Remote state storage using **AWS S3** with encryption for reliability and team collaboration.
+## 🛠️ Lessons Learned & Troubleshooting
 
-### Configuration Management (Ansible)
-*   **SSH ProxyJump:** Uses modern SSH tunneling to configure the private server through the Bastion Host.
-*   **Automated Provisioning:** Automated installation and service management of the Apache (httpd) web server.
-*   **Custom Content:** Automated deployment of a unique landing page to the target server.
+This project involved solving real-world DevOps challenges across multiple layers of the stack:
 
-### Orchestration (Jenkins Pipeline)
-*   **Declarative Pipeline:** Manages the full lifecycle from code checkout to deployment.
-*   **Build with Parameters:** Allows the user to choose between `apply` (create) or `destroy` (cleanup) actions at runtime.
-*   **Secure Credential Handling:** Managed storage for AWS access keys and SSH private keys.
-*   **Discord Integration:** Sends real-time, detailed notifications (Action & Status) to a Discord channel via Webhooks.
+### 1. Networking & Connectivity
+* **Issue:** 502 Bad Gateway at the Load Balancer level.
+* **Resolution:** Performed log analysis on backend servers to identify application startup failures.
+* **Method:** Utilized **SSH Agent Forwarding** via the Bastion host to securely access and debug instances in private subnets.
 
-## 🚀 The Pipeline Flow
-1.  **Checkout:** Pulls the latest code from GitHub.
-2.  **Terraform Action:** 
-    *   `apply`: Provisions/Updates the VPC, Bastion Host, and Web Server.
-    *   `destroy`: Tears down the entire infrastructure to save costs.
-3.  **Ansible Provisioning:** (Only during `apply`)
-    *   Dynamically retrieves the Bastion Public IP and Web Server Private IP.
-    *   Performs secure software configuration using the Jump Host bridge.
-4.  **Post Actions:** Sends build status and operation type to Discord.
-## 🛠️ Technical Details & Security Features
+### 2. Permissions & Port Management
+* **Issue:** `Permission denied` when binding to Port 80.
+* **Resolution:** Linux restricts privileged ports (below 1024) to the root user. Configured Ansible to initiate the application using `sudo`.
+* **Environment Preservation:** Implemented `sudo -E` to ensure that critical environment variables (database credentials) were preserved during privilege escalation.
 
-### CI/CD Logic & Optimization
-*   **Intelligent Path Filtering:** The pipeline includes a custom Groovy script that analyzes git changes. If only documentation (`README.md`) is modified, the pipeline skips all resource-heavy infrastructure stages (Terraform & Ansible) to save time and compute costs.
-*   **Idempotent Design:** Both Terraform and Ansible are configured to ensure that running the pipeline multiple times results in the same state without unnecessary resource duplication.
+### 3. Service Conflicts
+* **Issue:** Port 80 was occupied by a legacy Apache (`httpd`) service.
+* **Resolution:** Automated a cleanup process in Ansible using `yum remove httpd` and the `fuser -k 80/tcp` command to force-release the port.
 
-### Security Hardening
-*   **Jump Host (Bastion) Pattern:** The web server resides in a subnet where port 22 is NOT exposed to the public internet. Access is only possible via a secure SSH tunnel through the Bastion Host.
-*   **Credential Management:** No secrets or private keys are stored in the repository. All sensitive data (AWS Keys, SSH Private Keys, Webhooks) are managed through Jenkins Credentials Provider.
-*   **Least Privilege:** Security groups are configured with the minimum necessary permissions, following cloud security best practices.
+### 4. CI/CD Orchestration (Jenkins)
+* **Logic:** Implemented a parameterized pipeline for dynamic `apply` and `destroy` actions.
+* **Lessons:** Learned that Jenkins requires an initial "learning" run to register new parameters from the `Jenkinsfile`.
+* **Debugging:** Established the importance of remote log files (`/home/ec2-user/flask.log`) to detect failures outside the Jenkins console output.
 
-## 📊 Deployment Logic
-The following diagram represents the automated flow of the project:
+## 📈 Final Result
+The project resulted in a stable, "one-click" infrastructure that handles software dependencies, database migrations, and web traffic distribution automatically.
 
-1. **Code Push** -> 2. **Jenkins Trigger** -> 3. **Path Filtering** -> 4. **Infrastructure (TF)** -> 5. **Configuration (Ansible)** -> 6. **Discord Notify**
 ---
-
-## 📸 Project Evidence
-
-### Jenkins Pipeline Success
-<img width="1700" height="756" alt="Képernyőfotó 2026-05-06 - 13 53 22" src="https://github.com/user-attachments/assets/b9908689-a829-4c72-b62a-0eae429a7d76" />
-
-
-### AWS EC2 Instance Status
-<img width="1218" height="454" alt="Képernyőfotó 2026-05-06 - 13 52 55" src="https://github.com/user-attachments/assets/1a23d120-ba94-41b1-bea5-a62cc4c91689" />
-
-## 🛠️ Future Roadmap
-*   [ ] **Load Balancer (ALB) integration:** To distribute traffic across multiple AZs.
-*   [ ] **S3 Website Hosting:** Moving static assets to S3 for better performance.
-*   [ ] **Auto Scaling Groups:** Ensuring high availability during peak traffic.
-*   [ ] **Dockerization:** Running the web server inside a lightweight container.
-
-## ❓ Troubleshooting
-*   **SSH Timeout:** Ensure your local IP is allowed in the Bastion Security Group.
-*   **Terraform Lock:** If a build crashes, you might need to manually release the S3 state lock.
-*   **Permission Denied:** Verify that the `id_rsa` key in Jenkins has the correct `400` permissions.
----
-*Generated by Markosz Jenkins Automation*
+*Developed during the DevOps Journey - 2026*
