@@ -34,7 +34,7 @@ pipeline {
         }
 
 stage('Ansible Provisioning') {
-            script {
+            script {//
                 def bastionIp = sh(script: "terraform output -raw bastion_ip", returnStdout: true).trim()
                 def dbHost = sh(script: "terraform output -raw db_endpoint", returnStdout: true).trim()
                 def jenkinsKey = "/Users/markosz/.ssh/id_rsa"
