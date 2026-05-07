@@ -1,7 +1,7 @@
 pipeline {
     agent any
     parameters {
-        choice(name: 'ACTION', choices: ['apply', 'destroy'], description: 'Terraform művelet kiválasztása')
+        choice(name: 'ACTION', choices: ['-', 'apply', 'destroy'], description: 'VÁLASSZ MŰVELETET!')
     }
     environment {
         // A Te Jenkinsedben lévő pontos ID-k használata:
