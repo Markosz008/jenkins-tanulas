@@ -2,6 +2,7 @@ pipeline {
     agent any
 
     environment {
+        // A Te Jenkinsedben lévő pontos ID-k használata:
         AWS_ACCESS_KEY_ID     = credentials('AWS_ACCESS_KEY_ID')
         AWS_SECRET_ACCESS_KEY = credentials('AWS_SECRET_ACCESS_KEY')
         AWS_DEFAULT_REGION    = 'eu-central-1'
@@ -34,6 +35,7 @@ pipeline {
                     echo "Várakozás 60 másodpercig az instance-ok indulására..."
                     sleep 60
 
+                    // A DB_HOST átadása az Ansible-nek környezeti változóként
                     withEnv(["DB_HOST=${dbHost}"]) {
                         sh "ansible-playbook -i aws_ec2.yml --private-key ${jenkinsKey} -u ec2-user '--ssh-common-args=-o StrictHostKeyChecking=no -o ProxyCommand=\"ssh -W %h:%p -q ec2-user@${bastionIp} -i ${jenkinsKey} -o StrictHostKeyChecking=no\"' setup2.yml"
                     }
@@ -42,21 +44,19 @@ pipeline {
         }
     }
 
-post {
+    post {
         success {
             script {
-                // Használjunk env.DISCORD_URL-t a sima DISCORD_URL helyett
                 discordSend description: "Sikeres Build! Az alkalmazás elérhető az ALB címen.", 
                             footer: "Jenkins Pipeline", 
                             link: "https://github.com/Markosz008/jenkins-tanulas", 
                             result: "SUCCESS", 
                             title: "Infrastructure & App Deployed", 
-                            webhookURL: "${env.DISCORD_URL}" 
+                            webhookURL: "${env.DISCORD_URL}"
             }
         }
         failure {
             script {
-                // Itt is env.DISCORD_URL
                 if (env.DISCORD_URL) {
                     discordSend description: "Hiba történt a Build során!", 
                                 result: "FAILURE", 
@@ -65,3 +65,4 @@ post {
             }
         }
     }
+}
