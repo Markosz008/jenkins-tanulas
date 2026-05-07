@@ -8,6 +8,7 @@ pipeline {
         AWS_SECRET_ACCESS_KEY = credentials('AWS_SECRET_ACCESS_KEY')
         AWS_DEFAULT_REGION    = 'eu-central-1'
         DISCORD_URL           = credentials('DISCORD_WEBHOOK')
+        DB_PASS               = credentials('DB_PASSWORD')
     }
 
     stages {
@@ -23,10 +24,10 @@ pipeline {
                 script {
                     if (params.ACTION == 'destroy') {
                         echo "--- Infrastruktúra TÖRLÉSE indítása ---"
-                        sh 'cd terraform && terraform destroy --auto-approve'
+                        sh "cd terraform && terraform destroy -var='db_password=${env.DB_PASS}' --auto-approve"
                     } else if (params.ACTION == 'apply') {
                         echo "--- Infrastruktúra KIÉPÍTÉSE indítása ---"
-                        sh 'cd terraform && terraform apply --auto-approve'
+                        sh "cd terraform && terraform apply -var='db_password=${env.DB_PASS}' --auto-approve"
                     } else {
                         error "Hiba: Válassz egy akciót (apply vagy destroy)!"
                     }
@@ -49,7 +50,7 @@ pipeline {
                     sleep 60
 
                     // Belépünk az ansible mappába és onnan futtatjuk a playbookot
-                    withEnv(["DB_HOST=${dbHost}"]) {
+                    withEnv(["DB_HOST=${dbHost}", "DB_PASS=${env.DB_PASS}"]) {
                         sh """
                         cd ansible && ansible-playbook -i aws_ec2.yml \
                         --private-key ${jenkinsKey} \

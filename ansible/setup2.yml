@@ -6,7 +6,7 @@
     db_host: "{{ lookup('env', 'DB_HOST') }}"
     db_name: "devopsdb"
     db_user: "admin"
-    db_pass: "NagyonTitkos1234"
+    db_pass: "{{ lookup('env', 'DB_PASS') }}"
 
   tasks:
     - name: Python3 és pip telepítése
