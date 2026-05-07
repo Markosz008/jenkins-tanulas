@@ -48,13 +48,7 @@ pipeline {
                     sleep 30
 
                     // Ansible futtatása ProxyJump használatával a Bastion hoston keresztül
-                    sh """
-                        ansible-playbook -i ${aws_ec2.yml}, \
-                        --private-key ${jenkinsKey} \
-                        -u ec2-user \
-                        --ssh-common-args="-o StrictHostKeyChecking=no -o ProxyCommand='ssh -W %h:%p -q ec2-user@${bastionIp} -i ${jenkinsKey} -o StrictHostKeyChecking=no'" \
-                        setup.yml
-                    """
+                    sh "ansible-playbook -i aws_ec2.yml --private-key ${jenkinsKey} -u ec2-user '--ssh-common-args=-o StrictHostKeyChecking=no -o ProxyCommand=\"ssh -W %h:%p -q ec2-user@${bastionIp} -i ${jenkinsKey} -o StrictHostKeyChecking=no\"' setup.yml"
                 }
             }
         }
