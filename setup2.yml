@@ -38,23 +38,35 @@
         dest: /home/ec2-user/app
         force: yes
 
-    - name: Adatbázis tábla létrehozása (csak egyszer)
+- name: Adatbázis tábla létrehozása (csak egyszer)
       shell: |
         python3 -c "
         import mysql.connector
-        conn = mysql.connector.connect(host='{{ db_host }}', user='{{ db_user }}', password='{{ db_pass }}', database='{{ db_name }}')
+        # Itt szétválasztjuk a hostot és a portot
+        full_host = '{{ db_host }}'
+        host_only = full_host.split(':')[0]
+        
+        conn = mysql.connector.connect(
+            host=host_only, 
+            port=3306,
+            user='{{ db_user }}', 
+            password='{{ db_pass }}', 
+            database='{{ db_name }}'
+        )
         cursor = conn.cursor()
         cursor.execute('CREATE TABLE IF NOT EXISTS messages (id INT AUTO_INCREMENT PRIMARY KEY, content TEXT)')
         conn.commit()
         cursor.close()
         conn.close()"
-      run_once: true # Csak az egyik szervernek kell ezt megcsinálnia
+      run_once: true
 
     - name: Flask app indítása a háttérben
       shell: |
+        # Itt is csak a host kell a port nélkül
+        DB_URL_RAW="{{ db_host }}"
+        export DB_HOST=$(echo $DB_URL_RAW | cut -d':' -f1)
         nohup python3 /home/ec2-user/app/app.py > /home/ec2-user/flask.log 2>&1 &
       environment:
-        DB_HOST: "{{ db_host }}"
         DB_USER: "{{ db_user }}"
         DB_PASS: "{{ db_pass }}"
         DB_NAME: "{{ db_name }}"

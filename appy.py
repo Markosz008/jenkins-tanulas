@@ -12,13 +12,17 @@ DB_PASS = os.environ.get('DB_PASS')
 DB_NAME = os.environ.get('DB_NAME')
 
 def get_db_connection():
+    # Levágjuk a portot, ha benne van a környezeti változóban
+    raw_host = os.environ.get('DB_HOST')
+    host_only = raw_host.split(':')[0] if raw_host else None
+    
     return mysql.connector.connect(
-        host=DB_HOST,
-        user=DB_USER,
-        password=DB_PASS,
-        database=DB_NAME
+        host=host_only,
+        port=3306,
+        user=os.environ.get('DB_USER'),
+        password=os.environ.get('DB_PASS'),
+        database=os.environ.get('DB_NAME')
     )
-
 @app.route('/')
 def index():
     hostname = socket.gethostname()
