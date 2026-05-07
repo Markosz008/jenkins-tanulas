@@ -3,11 +3,10 @@
   hosts: all
   become: yes
   vars:
-    # Ezeket a Jenkins fogja behelyettesíteni környezeti változókból
     db_host: "{{ lookup('env', 'DB_HOST') }}"
     db_name: "devopsdb"
     db_user: "admin"
-    db_pass: "NagyonTitkos1234" # Használd azt, amit a variables.tf-ben megadtál
+    db_pass: "NagyonTitkos1234"
 
   tasks:
     - name: Python3 és pip telepítése
@@ -25,7 +24,7 @@
           - mysql-connector-python
         executable: pip3
 
-    - name: Régi Apache leállítása (hogy szabad legyen a 80-as port)
+    - name: Régi Apache leállítása
       service:
         name: httpd
         state: stopped
@@ -35,14 +34,13 @@
     - name: Alkalmazás letöltése a repóból
       git:
         repo: 'https://github.com/Markosz008/jenkins-tanulas.git'
-        dest: /home/ec2-user/app
+        dest: /home/ec2-user/app_repo   # Átneveztem a célmappát, hogy ne keveredjen a belső mappával
         force: yes
 
-    - name: Adatbázis tábla létrehozása (csak egyszer)
+    - name: Adatbázis tábla létrehozása
       shell: |
         python3 -c "
         import mysql.connector
-        # Itt szétválasztjuk a hostot és a portot
         full_host = '{{ db_host }}'
         host_only = full_host.split(':')[0]
         
@@ -76,8 +74,9 @@
         export DB_PASS="{{ db_pass }}"
         export DB_NAME="{{ db_name }}"
         
-        # Indítás úgy, hogy ne függjön a termináltól (disown)
-        sudo -E nohup python3 /home/ec2-user/app/appy.py > /home/ec2-user/flask.log 2>&1 &
+        # FIGYELEM: Az útvonal megváltozott!
+        # /home/ec2-user/app_repo/app/app.py
+        sudo -E nohup python3 /home/ec2-user/app_repo/app/app.py > /home/ec2-user/flask.log 2>&1 &
         sleep 5
       async: 60
       poll: 0
