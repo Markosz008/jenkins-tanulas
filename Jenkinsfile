@@ -1,20 +1,16 @@
 pipeline {
     agent any
 
-    parameters {
-        choice(name: 'ACTION', choices: ['apply', 'destroy'], description: 'Válaszd ki a műveletet (apply = építés, destroy = törlés)')
-    }
-
     environment {
-        AWS_ACCESS_KEY_ID     = credentials('AWS_ACCESS_KEY_ID')
-        AWS_SECRET_ACCESS_KEY = credentials('AWS_SECRET_ACCESS_KEY')
-        DISCORD_URL           = credentials('DISCORD_WEBHOOK')
+        AWS_ACCESS_KEY_ID     = credentials('aws-access-key-id')
+        AWS_SECRET_ACCESS_KEY = credentials('aws-secret-access-key')
+        AWS_DEFAULT_REGION    = 'eu-central-1'
+        DISCORD_URL           = credentials('discord-webhook-url')
     }
 
     stages {
         stage('Terraform Init') {
             steps {
-                // Inicializálja a Terraformot és a S3 backendet
                 sh 'terraform init -input=false -force-copy'
             }
         }
@@ -22,19 +18,14 @@ pipeline {
         stage('Terraform Action') {
             steps {
                 script {
-                    if (params.ACTION == 'apply') {
-                        echo "--- Infrastruktúra kiépítése indítása ---"
-                        sh 'terraform apply --auto-approve'
-                    } else {
-                        echo "--- Infrastruktúra lebontása indítása ---"
-                        sh 'terraform destroy --auto-approve'
-                    }
+                    echo "--- Infrastruktúra kiépítése indítása ---"
+                    sh 'terraform apply --auto-approve'
                 }
             }
         }
 
-stage('Ansible Provisioning') {
-            steps {  // <--- EZ HIÁNYZOTT!
+        stage('Ansible Provisioning') {
+            steps {
                 script {
                     def bastionIp = sh(script: "terraform output -raw bastion_ip", returnStdout: true).trim()
                     def dbHost = sh(script: "terraform output -raw db_endpoint", returnStdout: true).trim()
@@ -47,22 +38,26 @@ stage('Ansible Provisioning') {
                         sh "ansible-playbook -i aws_ec2.yml --private-key ${jenkinsKey} -u ec2-user '--ssh-common-args=-o StrictHostKeyChecking=no -o ProxyCommand=\"ssh -W %h:%p -q ec2-user@${bastionIp} -i ${jenkinsKey} -o StrictHostKeyChecking=no\"' setup2.yml"
                     }
                 }
-            } // <--- EZ ZÁRJA A steps-et
-        } // <--- EZ ZÁRJA A stage-et    } // EZ A steps VAGY pipeline ZÁRÓJELE (attól függ, hol tartasz)
+            }
+        }
+    }
 
     post {
         success {
             script {
-                discordSend description: "Művelet: ${params.ACTION} - Állapot: ✅ SIKERES", 
-                            title: "Project: ${JOB_NAME}", 
-                            webhookURL: env.DISCORD_URL
+                discordSend description: "Sikeres Build! Az alkalmazás elérhető az ALB címen.", 
+                            footer: "Jenkins Pipeline", 
+                            link: "https://github.com/Markosz008/jenkins-tanulas", 
+                            result: "SUCCESS", 
+                            title: "Infrastructure & App Deployed", 
+                            webhookURL: "${DISCORD_URL}"
             }
         }
         failure {
             script {
-                discordSend description: "Művelet: ${params.ACTION} - Állapot: ❌ HIBA TÖRTÉNT", 
-                            title: "Project: ${JOB_NAME}", 
-                            webhookURL: env.DISCORD_URL
+                discordSend description: "Hiba történt a Build során!", 
+                            result: "FAILURE", 
+                            webhookURL: "${DISCORD_URL}"
             }
         }
     }
