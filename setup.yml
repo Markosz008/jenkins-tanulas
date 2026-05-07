@@ -1,6 +1,6 @@
 ---
 - name: Web szerver beállítása
-  hosts: webservers  # <--- Itt CSAK a webservers csoportra szűrünk!
+  hosts: all  # <--- Itt CSAK a webservers csoportra szűrünk!
   become: yes
   vars:
     app_name: "2048 Játék"
