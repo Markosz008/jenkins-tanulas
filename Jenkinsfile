@@ -34,20 +34,21 @@ pipeline {
         }
 
 stage('Ansible Provisioning') {
-            script {//
-                def bastionIp = sh(script: "terraform output -raw bastion_ip", returnStdout: true).trim()
-                def dbHost = sh(script: "terraform output -raw db_endpoint", returnStdout: true).trim()
-                def jenkinsKey = "/Users/markosz/.ssh/id_rsa"
+            steps {  // <--- EZ HIÁNYZOTT!
+                script {
+                    def bastionIp = sh(script: "terraform output -raw bastion_ip", returnStdout: true).trim()
+                    def dbHost = sh(script: "terraform output -raw db_endpoint", returnStdout: true).trim()
+                    def jenkinsKey = "/Users/markosz/.ssh/id_rsa"
 
-                echo "Várakozás a szerverekre..."
-                sleep 60
+                    echo "Várakozás 60 másodpercig az instance-ok indulására..."
+                    sleep 60
 
-                withEnv(["DB_HOST=${dbHost}"]) {
-                    sh "ansible-playbook -i aws_ec2.yml --private-key ${jenkinsKey} -u ec2-user '--ssh-common-args=-o StrictHostKeyChecking=no -o ProxyCommand=\"ssh -W %h:%p -q ec2-user@${bastionIp} -i ${jenkinsKey} -o StrictHostKeyChecking=no\"' setup2.yml"
-                } // EZA withEnv ZÁRÓJELE
-            } // EZ A script ZÁRÓJELE
-        } // EZ A stage ZÁRÓJELE
-    } // EZ A steps VAGY pipeline ZÁRÓJELE (attól függ, hol tartasz)
+                    withEnv(["DB_HOST=${dbHost}"]) {
+                        sh "ansible-playbook -i aws_ec2.yml --private-key ${jenkinsKey} -u ec2-user '--ssh-common-args=-o StrictHostKeyChecking=no -o ProxyCommand=\"ssh -W %h:%p -q ec2-user@${bastionIp} -i ${jenkinsKey} -o StrictHostKeyChecking=no\"' setup2.yml"
+                    }
+                }
+            } // <--- EZ ZÁRJA A steps-et
+        } // <--- EZ ZÁRJA A stage-et    } // EZ A steps VAGY pipeline ZÁRÓJELE (attól függ, hol tartasz)
 
     post {
         success {
