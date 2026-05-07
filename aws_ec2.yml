@@ -1,0 +1,8 @@
+plugin: amazon.aws.aws_ec2
+regions:
+  - eu-central-1
+filters:
+  tag:Name:
+    - ASG-Web-Server # Csak azokat keressük, amiket az ASG gyártott
+hostnames:
+  - private-ip-address # A belső IP-n fogjuk őket elérni a Bastion-on keresztül
