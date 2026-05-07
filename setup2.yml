@@ -38,7 +38,7 @@
         dest: /home/ec2-user/app
         force: yes
 
-- name: Adatbázis tábla létrehozása (csak egyszer)
+    - name: Adatbázis tábla létrehozása (csak egyszer)
       shell: |
         python3 -c "
         import mysql.connector
