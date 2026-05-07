@@ -1,0 +1,60 @@
+---
+- name: Flask Alkalmazás Telepítése és Beállítása
+  hosts: all
+  become: yes
+  vars:
+    # Ezeket a Jenkins fogja behelyettesíteni környezeti változókból
+    db_host: "{{ lookup('env', 'DB_HOST') }}"
+    db_name: "devopsdb"
+    db_user: "admin"
+    db_pass: "NagyonTitkosJelszo123" # Használd azt, amit a variables.tf-ben megadtál
+
+  tasks:
+    - name: Python3 és pip telepítése
+      yum:
+        name: 
+          - python3
+          - python3-pip
+          - git
+        state: present
+
+    - name: Flask és MySQL connector telepítése
+      pip:
+        name: 
+          - flask
+          - mysql-connector-python
+        executable: pip3
+
+    - name: Régi Apache leállítása (hogy szabad legyen a 80-as port)
+      service:
+        name: httpd
+        state: stopped
+        enabled: no
+      ignore_errors: yes
+
+    - name: Alkalmazás letöltése a repóból
+      git:
+        repo: 'https://github.com/Markosz008/jenkins-tanulas.git'
+        dest: /home/ec2-user/app
+        force: yes
+
+    - name: Adatbázis tábla létrehozása (csak egyszer)
+      shell: |
+        python3 -c "
+        import mysql.connector
+        conn = mysql.connector.connect(host='{{ db_host }}', user='{{ db_user }}', password='{{ db_pass }}', database='{{ db_name }}')
+        cursor = conn.cursor()
+        cursor.execute('CREATE TABLE IF NOT EXISTS messages (id INT AUTO_INCREMENT PRIMARY KEY, content TEXT)')
+        conn.commit()
+        cursor.close()
+        conn.close()"
+      run_once: true # Csak az egyik szervernek kell ezt megcsinálnia
+
+    - name: Flask app indítása a háttérben
+      shell: |
+        nohup python3 /home/ec2-user/app/app.py > /home/ec2-user/flask.log 2>&1 &
+      environment:
+        DB_HOST: "{{ db_host }}"
+        DB_USER: "{{ db_user }}"
+        DB_PASS: "{{ db_pass }}"
+        DB_NAME: "{{ db_name }}"
