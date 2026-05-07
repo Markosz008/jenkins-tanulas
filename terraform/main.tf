@@ -53,7 +53,13 @@ resource "aws_subnet" "public_subnet" {
   map_public_ip_on_launch = true
   tags = { Name = "Public-Subnet-Bastion" }
 }
-
+resource "aws_subnet" "public_subnet_2" {
+  vpc_id                  = aws_vpc.elso_halozatom.id
+  cidr_block              = "10.0.4.0/24"   # Ügyelj, hogy ez a tartomány szabad legyen
+  availability_zone       = "eu-central-1b" # Ez a lényeg: a másik zóna!
+  map_public_ip_on_launch = true
+  tags = { Name = "Public-Subnet-2"}
+}
 resource "aws_subnet" "private_subnet" {
   vpc_id     = aws_vpc.elso_halozatom.id
   cidr_block = "10.0.2.0/24"
@@ -83,6 +89,10 @@ resource "aws_route_table_association" "a" {
   route_table_id = aws_route_table.pub_rt.id
 }
 
+resource "aws_route_table_association" "b" {
+  subnet_id      = aws_subnet.public_subnet_2.id
+  route_table_id = aws_route_table.public_rt.id
+}
 # Security Groups
 resource "aws_security_group" "bastion_sg" {
   name   = "bastion_access"
