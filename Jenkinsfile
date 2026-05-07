@@ -18,15 +18,19 @@ pipeline {
             }
         }
 
-        stage('Terraform Action') {
+stage('Terraform Action') {
             steps {
                 script {
-                    echo "--- Infrastruktúra kiépítése indítása ---"
-                    sh 'terraform apply --auto-approve'
+                    if (params.ACTION == 'destroy') {
+                        echo "--- Infrastruktúra TÖRLÉSE indítása ---"
+                        sh 'terraform destroy --auto-approve'
+                    } else {
+                        echo "--- Infrastruktúra KIÉPÍTÉSE indítása ---"
+                        sh 'terraform apply --auto-approve'
+                    }
                 }
             }
         }
-
         stage('Ansible Provisioning') {
             when {
                 expression { params.ACTION == 'apply' }
