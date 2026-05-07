@@ -134,15 +134,6 @@ resource "aws_instance" "bastion" {
   tags = { Name = "Bastion-Host" }
 }
 
-resource "aws_instance" "web_szerver" {
-  ami                    = data.aws_ami.latest_amazon_linux.id
-  instance_type          = "t3.micro"
-  subnet_id              = aws_subnet.public_subnet.id # ÁTVÁLTVA PUBLIKUSRA!
-  vpc_security_group_ids = [aws_security_group.web_sg.id]
-  key_name               = aws_key_pair.jenkins_key.key_name
-  tags = { Name = "Web-Server-Public-Access" }
-}
-
 # Mivel most már publikus alhálózatban van, lekérhetjük a publikus IP-jét is a böngészőhöz
 output "web_public_ip" {
   value = aws_instance.web_szerver.public_ip
