@@ -43,7 +43,7 @@ pipeline {
                     // Dinamikus IP címek lekérése a Terraform outputokból
                     def bastionIp = sh(script: "terraform output -raw bastion_ip", returnStdout: true).trim()
                     def webPrivateIp = sh(script: "terraform output -raw web_private_ip", returnStdout: true).trim()
-                    def jenkinsKey = "/var/jenkins_home/id_rsa"
+                    def jenkinsKey = "/Users/markosz/.ssh/id_rsa"
                     
                     echo "Várakozás 30 másodpercet az instance-ok indulására..."
                     sleep 30
