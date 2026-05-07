@@ -4,7 +4,6 @@ pipeline {
         choice(name: 'ACTION', choices: ['-', 'apply', 'destroy'], description: 'VÁLASSZ MŰVELETET!')
     }
     environment {
-        // A Te Jenkinsedben lévő pontos ID-k használata:
         AWS_ACCESS_KEY_ID     = credentials('AWS_ACCESS_KEY_ID')
         AWS_SECRET_ACCESS_KEY = credentials('AWS_SECRET_ACCESS_KEY')
         AWS_DEFAULT_REGION    = 'eu-central-1'
@@ -14,39 +13,50 @@ pipeline {
     stages {
         stage('Terraform Init') {
             steps {
-                sh 'terraform init -input=false -force-copy'
+                // Belépünk a terraform mappába és ott indítunk
+                sh 'cd terraform && terraform init -input=false -force-copy'
             }
         }
 
-stage('Terraform Action') {
+        stage('Terraform Action') {
             steps {
                 script {
                     if (params.ACTION == 'destroy') {
                         echo "--- Infrastruktúra TÖRLÉSE indítása ---"
-                        sh 'terraform destroy --auto-approve'
-                    } else {
+                        sh 'cd terraform && terraform destroy --auto-approve'
+                    } else if (params.ACTION == 'apply') {
                         echo "--- Infrastruktúra KIÉPÍTÉSE indítása ---"
-                        sh 'terraform apply --auto-approve'
+                        sh 'cd terraform && terraform apply --auto-approve'
+                    } else {
+                        error "Hiba: Válassz egy akciót (apply vagy destroy)!"
                     }
                 }
             }
         }
+
         stage('Ansible Provisioning') {
             when {
                 expression { params.ACTION == 'apply' }
             }
             steps {
                 script {
-                    def bastionIp = sh(script: "terraform output -raw bastion_ip", returnStdout: true).trim()
-                    def dbHost = sh(script: "terraform output -raw db_endpoint", returnStdout: true).trim()
+                    // Fontos: Az outputokat a terraform mappából kérjük le!
+                    def bastionIp = sh(script: "cd terraform && terraform output -raw bastion_ip", returnStdout: true).trim()
+                    def dbHost = sh(script: "cd terraform && terraform output -raw db_endpoint", returnStdout: true).trim()
                     def jenkinsKey = "/Users/markosz/.ssh/id_rsa"
 
                     echo "Várakozás 60 másodpercig az instance-ok indulására..."
                     sleep 60
 
-                    // A DB_HOST átadása az Ansible-nek környezeti változóként
+                    // Belépünk az ansible mappába és onnan futtatjuk a playbookot
                     withEnv(["DB_HOST=${dbHost}"]) {
-                        sh "ansible-playbook -i aws_ec2.yml --private-key ${jenkinsKey} -u ec2-user '--ssh-common-args=-o StrictHostKeyChecking=no -o ProxyCommand=\"ssh -W %h:%p -q ec2-user@${bastionIp} -i ${jenkinsKey} -o StrictHostKeyChecking=no\"' setup2.yml"
+                        sh """
+                        cd ansible && ansible-playbook -i aws_ec2.yml \
+                        --private-key ${jenkinsKey} \
+                        -u ec2-user \
+                        --ssh-common-args='-o StrictHostKeyChecking=no -o ProxyCommand="ssh -W %h:%p -q ec2-user@${bastionIp} -i ${jenkinsKey} -o StrictHostKeyChecking=no"' \
+                        setup2.yml
+                        """
                     }
                 }
             }
@@ -56,21 +66,19 @@ stage('Terraform Action') {
     post {
         success {
             script {
-                discordSend description: "Sikeres Build! Az alkalmazás elérhető az ALB címen.", 
+                discordSend description: "Sikeres Build! Művelet: ${params.ACTION}", 
                             footer: "Jenkins Pipeline", 
                             link: "https://github.com/Markosz008/jenkins-tanulas", 
                             result: "SUCCESS", 
-                            title: "Infrastructure & App Deployed", 
+                            title: "Infrastructure Task Finished", 
                             webhookURL: "${env.DISCORD_URL}"
             }
         }
         failure {
             script {
-                if (env.DISCORD_URL) {
-                    discordSend description: "Hiba történt a Build során!", 
-                                result: "FAILURE", 
-                                webhookURL: "${env.DISCORD_URL}"
-                }
+                discordSend description: "Hiba történt a Build során!", 
+                            result: "FAILURE", 
+                            webhookURL: "${env.DISCORD_URL}"
             }
         }
     }
