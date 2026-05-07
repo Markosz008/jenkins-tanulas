@@ -135,9 +135,5 @@ resource "aws_instance" "bastion" {
 }
 
 # Mivel most már publikus alhálózatban van, lekérhetjük a publikus IP-jét is a böngészőhöz
-output "web_public_ip" {
-  value = aws_instance.web_szerver.public_ip
-}
 
 output "bastion_ip" { value = aws_instance.bastion.public_ip }
-output "web_private_ip" { value = aws_instance.web_szerver.private_ip }
