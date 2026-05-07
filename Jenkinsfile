@@ -28,6 +28,9 @@ pipeline {
         }
 
         stage('Ansible Provisioning') {
+            when {
+                expression { params.ACTION == 'apply' }
+            }
             steps {
                 script {
                     def bastionIp = sh(script: "terraform output -raw bastion_ip", returnStdout: true).trim()
