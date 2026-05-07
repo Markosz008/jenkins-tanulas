@@ -31,7 +31,7 @@ resource "aws_db_instance" "mysql_db" {
 # Security Group az adatbázisnak (hogy csak a webszerver érje el)
 resource "aws_security_group" "db_sg" {
   name        = "db_sg"
-  description = "Engedélyezi a MySQL forgalmat a webszerver felől"
+  description = "Allow MySQL traffic from webserver"
   vpc_id      = aws_vpc.elso_halozatom.id
 
   ingress {
