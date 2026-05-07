@@ -60,20 +60,24 @@
         conn.close()"
       run_once: true
 
-    - name: Flask app indítása sudo-val a 80-as porton
+    - name: Apache teljes eltávolítása és port felszabadítása
       shell: |
-        # 1. Keressük meg és lőjük le, ha már fut valami a 80-as porton
+        sudo systemctl stop httpd || true
+        sudo yum remove -y httpd || true
         sudo fuser -k 80/tcp || true
-        
-        # 2. Környezeti változók előkészítése
+      ignore_errors: yes
+
+    - name: Flask app indítása sudo-val
+      shell: |
+        # Környezeti változók kinyerése
         DB_URL_RAW="{{ db_host }}"
         export DB_HOST=$(echo $DB_URL_RAW | cut -d':' -f1)
         export DB_USER="{{ db_user }}"
         export DB_PASS="{{ db_pass }}"
         export DB_NAME="{{ db_name }}"
         
-        # 3. Indítás SUDO-val a háttérben
-        sudo -E nohup python3 /home/ec2-user/app/app.py > /home/ec2-user/flask.log 2>&1 &
-        sleep 2
+        # Indítás úgy, hogy ne függjön a termináltól (disown)
+        sudo -E nohup python3 /home/ec2-user/app/appy.py > /home/ec2-user/flask.log 2>&1 &
+        sleep 5
       async: 60
       poll: 0
