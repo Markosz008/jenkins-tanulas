@@ -1,6 +1,8 @@
 pipeline {
     agent any
-
+    parameters {
+        choice(name: 'ACTION', choices: ['apply', 'destroy'], description: 'Terraform művelet kiválasztása')
+    }
     environment {
         // A Te Jenkinsedben lévő pontos ID-k használata:
         AWS_ACCESS_KEY_ID     = credentials('AWS_ACCESS_KEY_ID')
