@@ -7,7 +7,7 @@
     db_host: "{{ lookup('env', 'DB_HOST') }}"
     db_name: "devopsdb"
     db_user: "admin"
-    db_pass: "NagyonTitkosJelszo123" # Használd azt, amit a variables.tf-ben megadtál
+    db_pass: "NagyonTitkos1234" # Használd azt, amit a variables.tf-ben megadtál
 
   tasks:
     - name: Python3 és pip telepítése
