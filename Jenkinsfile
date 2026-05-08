@@ -9,12 +9,13 @@ pipeline {
         AWS_DEFAULT_REGION    = 'eu-central-1'
         DISCORD_URL           = credentials('DISCORD_WEBHOOK')
         DB_PASS               = credentials('DB_PASSWORD')
+        // A te felhasználóneveddel megadott image név
+        DOCKER_IMAGE          = "markosz008/flask-app:latest"
     }
 
     stages {
         stage('Terraform Init') {
             steps {
-                // Belépünk a terraform mappába és ott indítunk
                 sh 'cd terraform && terraform init -input=false -force-copy'
             }
         }
@@ -35,13 +36,31 @@ pipeline {
             }
         }
 
+        // --- DOCKER SZAKASZ BESZÚRÁSA ---
+        stage('Docker Build & Push') {
+            when {
+                expression { params.ACTION == 'apply' }
+            }
+            steps {
+                script {
+                    // Itt használd azt a Credential ID-t, amit Jenkinsben a Docker Hub-hoz létrehoztál!
+                    // Ha nem 'docker-hub-id' néven mentetted el, írd át az alábbi sort!
+                    withCredentials([usernamePassword(credentialsId: 'docker-hub-id', usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS')]) {
+                        sh "echo \$DOCKER_PASS | docker login -u \$DOCKER_USER --password-stdin"
+                        sh "docker build -t ${env.DOCKER_IMAGE} ."
+                        sh "docker push ${env.DOCKER_IMAGE}"
+                    }
+                }
+            }
+        }
+        // --- DOCKER SZAKASZ VÉGE ---
+
         stage('Ansible Provisioning') {
             when {
                 expression { params.ACTION == 'apply' }
             }
             steps {
                 script {
-                    // Fontos: Az outputokat a terraform mappából kérjük le!
                     def bastionIp = sh(script: "cd terraform && terraform output -raw bastion_ip", returnStdout: true).trim()
                     def dbHost = sh(script: "cd terraform && terraform output -raw db_endpoint", returnStdout: true).trim()
                     def jenkinsKey = "/Users/markosz/.ssh/id_rsa"
@@ -49,7 +68,6 @@ pipeline {
                     echo "Várakozás 60 másodpercig az instance-ok indulására..."
                     sleep 60
 
-                    // Belépünk az ansible mappába és onnan futtatjuk a playbookot
                     withEnv(["DB_HOST=${dbHost}", "DB_PASS=${env.DB_PASS}"]) {
                         sh """
                         cd ansible && ansible-playbook -i aws_ec2.yml \
