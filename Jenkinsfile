@@ -46,7 +46,7 @@ pipeline {
                     // Itt használd azt a Credential ID-t, amit Jenkinsben a Docker Hub-hoz létrehoztál!
                     // Ha nem 'docker-hub-id' néven mentetted el, írd át az alábbi sort!
                     withCredentials([usernamePassword(credentialsId: 'docker-hub-id', usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS')]) {
-                        sh "echo \$DOCKER_PASS | docker login -u \$DOCKER_USER --password-stdin"
+                        sh "echo $DOCKER_PASS | docker login -u $DOCKER_USER --password-stdin"
                         sh "docker build -t ${env.DOCKER_IMAGE} ."
                         sh "docker push ${env.DOCKER_IMAGE}"
                     }
