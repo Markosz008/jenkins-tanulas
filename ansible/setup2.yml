@@ -68,7 +68,7 @@
         HOST_ONLY=$(echo $DB_URL_RAW | cut -d':' -f1)
         
         docker run -d --name flask-app \
-          -p 80:5000 \
+          -p 80:80 \
           -e DB_HOST=$HOST_ONLY \
           -e DB_USER="{{ db_user }}" \
           -e DB_PASS="{{ db_pass }}" \
