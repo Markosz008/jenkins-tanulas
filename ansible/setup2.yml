@@ -1,5 +1,5 @@
 ---
-- name: Flask Alkalmazás Telepítése és Beállítása
+- name: Flask Alkalmazás Telepítése Dockerrel
   hosts: all
   become: yes
   vars:
@@ -7,37 +7,34 @@
     db_name: "devopsdb"
     db_user: "admin"
     db_pass: "{{ lookup('env', 'DB_PASS') }}"
+    docker_image: "markosz008/flask-app:latest"
 
   tasks:
-    - name: Python3 és pip telepítése
+    - name: Docker telepítése
       yum:
-        name: 
-          - python3
-          - python3-pip
-          - git
+        name: docker
         state: present
 
-    - name: Flask és MySQL connector telepítése
-      pip:
-        name: 
-          - flask
-          - mysql-connector-python
-        executable: pip3
-
-    - name: Régi Apache leállítása
+    - name: Docker szolgáltatás elindítása
       service:
-        name: httpd
-        state: stopped
-        enabled: no
+        name: docker
+        state: started
+        enabled: yes
+
+    - name: ec2-user hozzáadása a docker csoporthoz
+      user:
+        name: ec2-user
+        groups: docker
+        append: yes
+
+    - name: Apache és egyéb zavaró folyamatok eltávolítása (port felszabadítás)
+      shell: |
+        sudo systemctl stop httpd || true
+        sudo yum remove -y httpd || true
+        sudo fuser -k 80/tcp || true
       ignore_errors: yes
 
-    - name: Alkalmazás letöltése a repóból
-      git:
-        repo: 'https://github.com/Markosz008/jenkins-tanulas.git'
-        dest: /home/ec2-user/app_repo   # Átneveztem a célmappát, hogy ne keveredjen a belső mappával
-        force: yes
-
-    - name: Adatbázis tábla létrehozása
+    - name: Adatbázis tábla létrehozása (Docker konténerből futtatva az ellenőrzést)
       shell: |
         python3 -c "
         import mysql.connector
@@ -57,26 +54,23 @@
         cursor.close()
         conn.close()"
       run_once: true
-
-    - name: Apache teljes eltávolítása és port felszabadítása
-      shell: |
-        sudo systemctl stop httpd || true
-        sudo yum remove -y httpd || true
-        sudo fuser -k 80/tcp || true
       ignore_errors: yes
 
-    - name: Flask app indítása sudo-val
+    - name: Friss Docker Image letöltése a Docker Hub-ról
+      shell: "docker pull {{ docker_image }}"
+
+    - name: Régi konténer leállítása és törlése (ha létezik)
+      shell: "docker rm -f flask-app || true"
+
+    - name: Flask app indítása Docker konténerben
       shell: |
-        # Környezeti változók kinyerése
         DB_URL_RAW="{{ db_host }}"
-        export DB_HOST=$(echo $DB_URL_RAW | cut -d':' -f1)
-        export DB_USER="{{ db_user }}"
-        export DB_PASS="{{ db_pass }}"
-        export DB_NAME="{{ db_name }}"
+        HOST_ONLY=$(echo $DB_URL_RAW | cut -d':' -f1)
         
-        # FIGYELEM: Az útvonal megváltozott!
-        # /home/ec2-user/app_repo/app/app.py
-        sudo -E nohup python3 /home/ec2-user/app_repo/app/app.py > /home/ec2-user/flask.log 2>&1 &
-        sleep 5
-      async: 60
-      poll: 0
+        docker run -d --name flask-app \
+          -p 80:5000 \
+          -e DB_HOST=$HOST_ONLY \
+          -e DB_USER="{{ db_user }}" \
+          -e DB_PASS="{{ db_pass }}" \
+          -e DB_NAME="{{ db_name }}" \
+          {{ docker_image }}
